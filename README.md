@@ -7,6 +7,8 @@ version: 1.0.0
 created: 2026-07-16
 updated: 2026-07-16
 links:
+  - "./architecture/repository-split.md"
+  - "./architecture/package-rename.md"
   - "../ckn/README.md"
   - "../gkn/README.md"
   - "../hphyskn/README.md"
@@ -19,6 +21,10 @@ links:
 # Knowledge Graph (KG) Documentation Hub
 
 Welcome to the centralized documentation repository for the Knowledge Graph (KG) system. This documentation is structured using the **Open Knowledge Format (OKF)**, making it highly indexable and queryable for AI agents, while remaining clean and readable for humans.
+
+## System Architecture & Specifications
+- [RWDKN Repository Split Design Spec](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/repository-split.md) — Details on splitting the monolithic RWDKN into pipeline and service repositories.
+- [Shared Infrastructure Package Namespace Refactoring](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/package-rename.md) — Details on refactoring `shared-infra` from `us.kolac.rkg` to `us.kolac.kg` and corresponding coordination/deployment pipeline enhancements.
 
 ## Workspace Directories & Projects
 - [ckn](file:///home/chandrakola/development/NLM/kg/ckn) — Clinical Knowledge Network (Simulated fixture)
