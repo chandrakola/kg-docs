@@ -9,6 +9,7 @@ updated: 2026-07-16
 links:
   - "./architecture/repository-split.md"
   - "./architecture/package-rename.md"
+  - "./architecture/twelve-factor-compliance.md"
   - "../ckn/README.md"
   - "../gkn/README.md"
   - "../hphyskn/README.md"
@@ -25,6 +26,7 @@ Welcome to the centralized documentation repository for the Knowledge Graph (KG)
 ## System Architecture & Specifications
 - [RWDKN Repository Split Design Spec](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/repository-split.md) — Details on splitting the monolithic RWDKN into pipeline and service repositories.
 - [Shared Infrastructure Package Namespace Refactoring](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/package-rename.md) — Details on refactoring `shared-infra` from `us.kolac.rkg` to `us.kolac.kg` and corresponding coordination/deployment pipeline enhancements.
+- [Twelve-Factor App Configuration Compliance](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/twelve-factor-compliance.md) — Details on parameterizing `ckn`, `gkn`, `hphyskn`, and `nlmkn` environments to separate code from config.
 
 ## Workspace Directories & Projects
 - [ckn](file:///home/chandrakola/development/NLM/kg/ckn) — Clinical Knowledge Network (Simulated fixture)
