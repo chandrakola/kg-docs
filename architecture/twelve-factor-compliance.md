@@ -47,3 +47,16 @@ This document records the refactoring changes applied across the Knowledge Graph
     *   `SSO_ALLOWED_DOMAINS` reads a comma-separated list of safe redirect locations (defaulting to `.kolac.us,.localhost,localhost`).
     *   `SSO_LOGIN_URL` and `SSO_DEFAULT_RD` default to relative paths (`/__auth/login` and `/hub/` respectively), letting Flask compute host redirects dynamically based on incoming headers.
     *   Replaced absolute path `env_file: /run/nlmkn/sso.env` inside `docker-compose.hub.yml` with direct `environment` blocks for container orchestration.
+
+---
+
+## 4. Parameterized RWDKN API Services & Ingress
+
+*   **Before:**
+    *   `rwdkn-service`'s production compose `deploy/rwdkn/docker-compose.rwdkn.yml` had hardcoded `Host(rwdkn.kolac.us)` and `NEO4J_server_bolt_advertised__address: browser.kolac.us:443`.
+    *   `edge.rwdkn.nginx.conf` had hardcoded CORS origin and Neo4j Browser redirect locations.
+    *   `query_app.py` capability endpoints reported static `https://kg.kolac.us/rwdkn/` URLs.
+*   **After:**
+    *   **Docker Ingress:** Configured Traefik rules to use host variables with defaults: `${RWDKN_HOST:-rwdkn.localhost}`, `${HUB_HOST:-nlmkn.localhost}`, `${BROWSER_HOST:-browser.localhost}`, and `${NEO4J_BOLT_ADVERTISED_ADDRESS:-browser.localhost:443}`.
+    *   **Nginx Template:** Converted the static edge config to `edge.rwdkn.nginx.conf.template` and mounted it under Nginx's template folder, dynamically substituting `${HUB_ORIGIN}`, `${BROWSER_HOST}`, and `${PROTOCOL}`.
+    *   **Capability URLs:** Parameterized URL values inside `query_app.py` using `os.environ.get()` to pull from `RWDKN_BASE_URL`, `RWDKN_FRIENDLY_URL`, `RWDKN_API_BASE_URL`, and `RWDKN_HEALTH_URL`.
