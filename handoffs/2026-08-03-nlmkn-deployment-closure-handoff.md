@@ -36,6 +36,14 @@ The work order is now:
 
 OpenClaw, Hermes, DSPy, external agent-memory systems, and similar agent-platform experiments are deferred. They are not prerequisites for NLM-KN deployment or the RWDKN data model.
 
+## Jenkins access policy
+
+- Jenkins is reachable only from the private network and is not exposed as a public service.
+- Jenkins does not require a username, password, API token, or stored client credential for the current deployment workflow.
+- Read requests may be made anonymously from the private network.
+- Jenkins POST requests still require its normal CSRF protection: obtain a crumb and retain the associated HTTP session cookie when submitting a build.
+- Do not introduce Jenkins credentials merely to automate these private-network builds unless the Jenkins exposure or security model changes.
+
 ## Starting evidence
 
 The prior handoff, `2026-07-29-nlmkn-deployment-targets-handoff.md`, recorded the following as completed at that time:
