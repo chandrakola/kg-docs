@@ -3,13 +3,16 @@ type: handoff
 title: "NLM-KN Deployment Targets Handoff — 2026-07-29"
 description: "Next-session checklist for validating the config-driven Linode deployment and defining PVE2."
 tags: [handoff, nlmkn, deployment, localhost, linode, pve2, jenkins, traefik, infisical]
-version: 1.0.0
+version: 1.1.0
 created: 2026-07-28
-updated: 2026-07-28
+updated: 2026-08-04
 links:
+  - "2026-08-03-nlmkn-deployment-closure-handoff.md"
+  - "2026-08-04-pve2-deployment-evidence.md"
   - "../../nlmkn/docs/deployment-configuration.md"
   - "../../nlmkn/deploy/targets/localhost.json"
   - "../../nlmkn/deploy/targets/linode.json"
+  - "../../nlmkn/deploy/targets/pve2.json"
   - "../../nlmkn/Jenkinsfile"
 ---
 
@@ -21,6 +24,14 @@ links:
 **Branch:** `main`  
 **Published commit:** `5b4979d6cdc5fd4a9915200dc0db0e79b9f7bd03`  
 **Primary goal:** Prove the generic deployment descriptor on Linode, then define and deploy the PVE2 target without changing Jenkins or application code.
+
+## Completion pointer — 2026-08-04
+
+Linode evidence was published in `nlmkn/docs/reports/phase-2_5-2026-08-03.md`.
+The correlated PVE2 deployment evidence, current revisions, Jenkins builds, runtime inventory,
+route matrix, graph counts, rollback inputs, and one remaining Browser-hostname exception are in
+`2026-08-04-pve2-deployment-evidence.md`. Use that report and the August 3 closure handoff as the
+current status; the checklist below is retained as historical planning evidence.
 
 ## Tonight's completed state
 

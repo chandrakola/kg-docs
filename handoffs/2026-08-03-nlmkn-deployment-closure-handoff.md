@@ -3,14 +3,16 @@ type: handoff
 title: "NLM-KN Deployment Closure Handoff — 2026-08-03"
 description: "Current priority and execution checklist for closing Linode and PVE2 deployment evidence before RWDKN semantic-model and remediation-loop work."
 tags: [handoff, nlmkn, deployment, linode, pve2, jenkins, evidence, rwdkn, semantic-model]
-version: 1.2.0
+version: 1.3.0
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 links:
   - "2026-07-29-nlmkn-deployment-targets-handoff.md"
+  - "2026-08-04-pve2-deployment-evidence.md"
   - "../../nlmkn/docs/deployment-configuration.md"
   - "../../nlmkn/deploy/targets/localhost.json"
   - "../../nlmkn/deploy/targets/linode.json"
+  - "../../nlmkn/deploy/targets/pve2.json"
   - "../../nlmkn/Jenkinsfile"
   - "../../rwdkn-data-pipeline/docs/specs/near-future-improvement-dataset-remediation-looping.md"
   - "../../rwdkn-data-pipeline/docs/specs/nlm-kn-requirements-traceability-matrix.md"
@@ -23,6 +25,21 @@ links:
 **Primary repository:** `/home/chandrakola/development/NLM/kg/nlmkn`  
 **Documentation repository:** `/home/chandrakola/development/NLM/kg/kg-docs`  
 **Priority decision:** Finish the bounded deployment work before starting RWDKN semantic-model implementation or dataset-remediation-loop implementation.
+
+## PVE2 completion update — 2026-08-04
+
+PVE2 core deployment and runtime acceptance are complete. The target is publicly accessible through
+Cloudflare, protected by the shared NLM-KN SSO policy, and was tested successfully by the
+operator. The correlated evidence is published in `2026-08-04-pve2-deployment-evidence.md`.
+One configuration exception remains: `browser-pve2.kolac.us` returns HTTP 404 because the
+deployed RWDKN environment retains the legacy `browser.kolac.us` hostname.
+
+Implementation revisions that established the working PVE2 path include:
+
+- `nlmkn` `883bd22` — add the Proxmox PVE2 deployment target;
+- `nlmkn` `18050ea` and `1205d93` — select the active PVE2 host and Cloudflare-compatible HTTPS hostnames;
+- `nlmkn` `d771842` and `108d5c9` — make convergence and evidence checks target the deployed environment; and
+- `shared-infra` `5e8c8b4`, `2927737`, and `349df22` — separate VM identity from SSH targeting, load provider-specific participant hosts, and pass the deployment host to evidence collection.
 
 ## Decision and sequencing
 
@@ -142,25 +159,26 @@ These facts are historical starting evidence, not confirmation of current runtim
 
 ## P1 — Define and validate PVE2
 
-- [ ] Decide whether PVE2 is internal-only, public, or dual-access.
-- [ ] Record the SSH or Tailscale hostname Jenkins will use.
-- [ ] Choose the DNS suffix and hostnames for NLM-KN, RWDKN, Browser, CKN, GKN, and HPHYSKN.
-- [ ] Decide HTTP versus HTTPS and define the valid shared SSO cookie domain.
-- [ ] Create `nlmkn/deploy/targets/pve2.json` from the deployment descriptor contract, not from Jenkins conditionals.
-- [ ] Create or select the PVE2 Infisical environment and verify Jenkins can read only the intended secrets.
-- [ ] Provision or verify DNS, Traefik, Docker, and the external `nlmkn-edge` network on PVE2.
-- [ ] Validate `pve2.json` with `scripts/deployment_config.py` and render every Compose configuration before deployment.
-- [ ] Run Jenkins with `DEPLOYMENT_ID=pve2` without adding a PVE2-specific Jenkinsfile branch or application-code path.
-- [ ] Repeat the browser, SSO, participant-route, RWDKN explorer, and federation smoke verification performed for Linode.
-- [ ] Record PVE2 image tags, Git SHAs, route matrix, Jenkins build evidence, and smoke results.
+- [x] Decide whether PVE2 is internal-only, public, or dual-access. It is public through Cloudflare while Jenkins and administrative access remain private.
+- [x] Record the SSH or Tailscale hostname Jenkins will use: `nlmkn-pve2-2`.
+- [x] Choose the DNS suffix and hostnames for NLM-KN, RWDKN, Browser, CKN, GKN, and HPHYSKN under `*-pve2.kolac.us`.
+- [x] Use HTTPS and the shared `.kolac.us` secure-cookie domain.
+- [x] Create `nlmkn/deploy/targets/pve2.json` from the deployment descriptor contract, not from Jenkins conditionals.
+- [x] Use the PVE2 Infisical environment and deploy without committing runtime secrets.
+- [x] Provision DNS, Traefik, Docker, Cloudflare Tunnel, and the external `nlmkn-edge` network on PVE2.
+- [x] Validate and consume `pve2.json` through the shared descriptor-driven deployment path.
+- [x] Run Jenkins with `DEPLOYMENT_ID=pve2` without adding a PVE2-specific application-code path.
+- [x] Complete operator acceptance of public routing, SSO, participant behavior, the RWDKN application, federation, and Neo4j data.
+- [ ] Align the deployed Neo4j Browser hostname with `browser-pve2.kolac.us` and verify Browser UI and Bolt-over-WebSocket behavior.
+- [x] Record PVE2 image tags, Git SHAs, route matrix, Jenkins build evidence, and smoke results in `2026-08-04-pve2-deployment-evidence.md`.
 
 ## P1 — Close deployment evidence
 
-- [ ] Produce a dated completion report covering Linode and PVE2.
-- [ ] Include target descriptor revisions, repository SHAs, image tags, Jenkins build identifiers, route matrices, smoke reports, and known exceptions.
-- [ ] Confirm no secrets appear in Git, generated descriptors, reports, or Jenkins logs.
-- [ ] Document rollback to the previous known-good deployment and verify the rollback inputs are still available.
-- [ ] Update the July 29 handoff or link it to the completion report so reviewers can follow the evidence chain.
+- [x] Produce dated evidence for Linode and PVE2. Linode evidence is in `nlmkn/docs/reports/phase-2_5-2026-08-03.md`; PVE2 evidence is in `2026-08-04-pve2-deployment-evidence.md`.
+- [x] Include target descriptor revisions, repository SHAs, image tags, Jenkins build identifiers, route matrices, smoke reports, and known exceptions.
+- [x] Confirm no secrets appear in the checked-in descriptors or reports; the automated PVE2 response scan also passed.
+- [x] Document rollback to the current known-good deployment inputs. Rollback was not executed because it would disrupt the working environment.
+- [x] Link the July 29 handoff to the completion report so reviewers can follow the evidence chain.
 
 ## Deployment exit criteria
 
@@ -203,4 +221,6 @@ When authorized, start with a bounded DailyMed pilot. Preserve immutable rounds,
 
 ## Immediate next action
 
-Finish the remaining Linode browser/explorer route checks and capture deployed image tags. Then define `pve2.json` only after the PVE2 access model, Jenkins SSH/Tailscale hostname, DNS suffix, TLS mode, cookie domain, and Infisical environment are known.
+Propagate `BROWSER_HOST=browser-pve2.kolac.us` and the matching Neo4j advertised address from the
+deployment descriptor through the coordinator into `rwdkn/pipeline`. Then run an application-only
+PVE2 refresh and append successful Browser UI and Bolt-over-WebSocket evidence to the dated report.
