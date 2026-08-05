@@ -29,7 +29,7 @@ links:
 
 Linode evidence was published in `nlmkn/docs/reports/phase-2_5-2026-08-03.md`.
 The correlated PVE2 deployment evidence, current revisions, Jenkins builds, runtime inventory,
-route matrix, graph counts, rollback inputs, and one remaining Browser-hostname exception are in
+route matrix, graph counts, rollback inputs, and resolved Browser-hostname correction are in
 `2026-08-04-pve2-deployment-evidence.md`. Use that report and the August 3 closure handoff as the
 current status; the checklist below is retained as historical planning evidence.
 

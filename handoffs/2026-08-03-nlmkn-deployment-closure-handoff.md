@@ -31,8 +31,9 @@ links:
 PVE2 core deployment and runtime acceptance are complete. The target is publicly accessible through
 Cloudflare, protected by the shared NLM-KN SSO policy, and was tested successfully by the
 operator. The correlated evidence is published in `2026-08-04-pve2-deployment-evidence.md`.
-One configuration exception remains: `browser-pve2.kolac.us` returns HTTP 404 because the
-deployed RWDKN environment retains the legacy `browser.kolac.us` hostname.
+The initial Browser-hostname exception was corrected in `shared-infra` `a5fd481` and
+`rwdkn-service` `c3dd1ee`; coordinator build 89, RWDKN build 10, Browser UI/discovery/WebSocket
+checks, and federation build 39 all passed.
 
 Implementation revisions that established the working PVE2 path include:
 
@@ -169,7 +170,7 @@ These facts are historical starting evidence, not confirmation of current runtim
 - [x] Validate and consume `pve2.json` through the shared descriptor-driven deployment path.
 - [x] Run Jenkins with `DEPLOYMENT_ID=pve2` without adding a PVE2-specific application-code path.
 - [x] Complete operator acceptance of public routing, SSO, participant behavior, the RWDKN application, federation, and Neo4j data.
-- [ ] Align the deployed Neo4j Browser hostname with `browser-pve2.kolac.us` and verify Browser UI and Bolt-over-WebSocket behavior.
+- [x] Align the deployed Neo4j Browser hostname with `browser-pve2.kolac.us` and verify Browser UI and Bolt-over-WebSocket behavior.
 - [x] Record PVE2 image tags, Git SHAs, route matrix, Jenkins build evidence, and smoke results in `2026-08-04-pve2-deployment-evidence.md`.
 
 ## P1 — Close deployment evidence
@@ -221,6 +222,5 @@ When authorized, start with a bounded DailyMed pilot. Preserve immutable rounds,
 
 ## Immediate next action
 
-Propagate `BROWSER_HOST=browser-pve2.kolac.us` and the matching Neo4j advertised address from the
-deployment descriptor through the coordinator into `rwdkn/pipeline`. Then run an application-only
-PVE2 refresh and append successful Browser UI and Bolt-over-WebSocket evidence to the dated report.
+Deployment closure evidence is complete. Begin the RWDKN Semantic Data Model v0.1 workstream,
+starting with prioritized competency questions and a BioLink-aligned LinkML source schema.
