@@ -1,257 +1,288 @@
 # Implementation Plan: Standards-Aligned Regimen Choice Architecture for CQ-5 (ISSUE-9)
 
-**Document ID:** `RWDKN-PLAN-2026-08-30-CQ5-REV1`  
+**Document ID:** `RWDKN-PLAN-2026-08-30-CQ5-REV2`  
 **Date:** August 30, 2026  
-**Status:** PROPOSED FOR REVIEW (No code executed yet)  
+**Status:** PROPOSED (Incorporates all F-01 through F-17 Review Findings)  
+**Supersedes:** `RWDKN-PLAN-2026-08-30-CQ5-REV1`  
 **Related Documents:**  
 * Reviewer Feedback: [`2026-08-30-cq5-regimen-choice-group-feedback.md`](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/2026-08-30-cq5-regimen-choice-group-feedback.md)  
-* Target Capability: Competency Question 5 (CQ-5: Conditional & Adjunct Indications, ISSUE-9)  
+* Technical Review: [`2026-08-30-cq5-regimen-choice-implementation-plan-review.md`](file:///home/chandrakola/development/NLM/kg/kg-docs/architecture/2026-08-30-cq5-regimen-choice-implementation-plan-review.md)  
 * Target Repositories: `rwdkn-data-pipeline`, `rwdkn-service`, `kg-docs`  
 
 ---
 
-## 1. Executive Summary & Goals
+## 1. Executive Summary & Core Semantic Invariants
 
-### 1.1. Problem Statement
-Competency Question 5 (CQ-5) requires answering precise clinical conditionality queries:
-> *"Which drugs are indicated specifically as an **adjunct to diet and exercise** for glycemic control in Type 2 Diabetes Mellitus versus as monotherapy or combination therapy?"*
+### 1.1. Purpose
+This document provides the definitive, normative implementation plan to resolve **ISSUE-9 / CQ-5 (Conditional & Adjunct Indications)**. It models complex clinical conditionality (e.g. *"indicated as an adjunct to diet and exercise for glycemic control in Type 2 Diabetes Mellitus"*) using a standards-aligned, compositional **`RegimenChoiceGroup` + `RegimenOption`** architecture.
 
-While PostgreSQL (`triple_provenance.evidence`) and KGX (`has_evidence`) preserve 100% of the raw sentence text, current graph relationships represent unconditioned edges: `(Semaglutide)-[:TREATS]->(Type 2 Diabetes)`. Consumers cannot filter on conditionality using pure graph structure without falling back to string regex search on the evidence text.
-
-### 1.2. Adopted Architecture
-This plan adopts the standards-aligned **`RegimenChoiceGroup` + `RegimenOption`** model. It replaces brittle composite string enums (`adjunct_to_diet_and_exercise`, `adjunct_to_radiotherapy`) with a compositional, standards-grounded architecture reusing:
-* **HL7 FHIR `action-selection-behavior`** (`exactly-one`, `all`, `one-or-more`, `all-or-none`) for selection logic.
-* **HL7 FHIR `therapy-relationship-type`** (`indicated-only-with`, `contraindicated-with`) for indication constraints.
-* **BioLink Model 4.3.6** for core treatment associations.
-* **SNOMED-CT & RxNorm** for non-drug and drug therapy identities.
-* **W3C SHACL** for RDF graph structural validation.
-
----
-
-## 2. Core Semantic Invariants
-
-1. **Open-World Assumption (Absence $\ne$ Monotherapy)**:
-   * A treatment assertion lacking a `RegimenChoiceGroup` represents **unspecified regimen information**, *never* monotherapy.
-   * Monotherapy must be represented as an explicit, evidence-backed `ExplicitMonotherapy` or single-agent `RegimenOption`.
-2. **Indivisible Regimen Bundles**:
-   * Permitted combinations are grouped into distinct `RegimenOption` units (e.g. `Option 1: [A + B]`, `Option 2: [C + D]`). They must never be flattened into a single list (`{A, B, C, D}`) to prevent unauthorized cross-combinations.
-3. **Terminology-Backed Therapies**:
-   * All concomitant therapies (lifestyle, diet, exercise, drugs, surgery) must be grounded to standard CURIEs (`SNOMEDCT:429300007`, `SNOMEDCT:226060000`, `SNOMEDCT:229065009`, `RXCUI:...`), never free text.
-4. **Dual-Store Parity (LPG vs. RDF)**:
-   * Neo4j Cypher and Fuseki SPARQL must return identical canonical result sets for CQ-5 queries.
+### 1.2. Non-Negotiable Semantic Invariants
+1. **Open-World Semantics (Absence $\ne$ Monotherapy)**:
+   * A treatment assertion lacking a regimen group means **regimen unspecified**, *never* monotherapy.
+   * Monotherapy must be explicit, positive, and backed by source evidence (`ExplicitMonotherapy`).
+2. **Indivisible Option Bundles**:
+   * Permitted therapy combinations (e.g. `(Diet + Exercise)` or `(Drug X + Metformin)`) are encapsulated as distinct `RegimenOption` units. They are never flattened into a single list to prevent invalid cross-combination synthesis.
+3. **Exact Canonical FHIR Vocabulary**:
+   * Reuse exact case-sensitive, hyphenated codes from HL7 FHIR R5:
+     * Selection behavior: `http://hl7.org/fhir/action-selection-behavior` (`exactly-one`, `all`, `all-or-none`, `at-most-one`, `one-or-more`, `any`)
+     * Therapy relationship: `http://hl7.org/fhir/therapy-relationship-type` (`indicated-only-with`, `contraindicated-only-with`, `replace-other-therapy`, etc.)
+4. **Deterministic Identity (UUIDv5)**:
+   * `choice_group_id = UUIDv5(NAMESPACE_RWDKN, association_id + ":" + selection_behavior)`
+   * `regimen_option_id = UUIDv5(NAMESPACE_RWDKN, choice_group_id + ":" + sorted_therapies_string)`
+5. **Non-Lossy Terminology Quarantine**:
+   * If a concomitant therapy term cannot be grounded to a standard CURIE, the **base treatment association is accepted**, while the regimen modifier is quarantined for review, preventing clinical evidence loss.
 
 ---
 
-## 3. System Architecture & Schema Specification
+## 2. Terminology & Standards Binding Table
 
-```mermaid
-flowchart TD
-    subgraph Treatment["Biolink Treatment Association"]
-        S["Subject: Drug (RxCUI:1991302 Semaglutide)"]
-        P["Predicate: biolink:treats"]
-        O["Object: Disease (SNOMEDCT:44054006 T2D)"]
-        E["Evidence: triple_provenance (sentence_id)"]
-    end
+All concepts must use verified ontologies. Unverified free text is prohibited in normalized output:
 
-    subgraph RegimenGroup["rwdkn:RegimenChoiceGroup"]
-        RCG["RegimenChoiceGroup (id: urn:uuid:cg-01)"]
-        SB["selectionBehavior: fhir-select:all"]
-    end
+| Clinical Concept / Role | Canonical CURIE | Preferred Label | Ontology / Code System | Semantic Justification |
+| :--- | :--- | :--- | :--- | :--- |
+| **Dietary Modification** | `SNOMEDCT:284071006` | *Dietary education* | SNOMED CT (US Edition) | Prescribes structured dietary intervention in clinical labels |
+| **Diet Therapy / Regimen** | `SNOMEDCT:386261001` | *Diet therapy* | SNOMED CT (US Edition) | Broader nutritional regimen category |
+| **Exercise Therapy** | `SNOMEDCT:229065009` | *Exercise therapy* | SNOMED CT (US Edition) | Physical exercise intervention |
+| **Lifestyle Modification** | `SNOMEDCT:429300007` | *Lifestyle modification* | SNOMED CT (US Edition) | Combined behavioral/lifestyle counseling |
+| **Active Drug Substance** | `RXCUI:<id>` / `UNII:<code>` | *Ingredient Name* | RxNorm / FDA UNII | Pinned IN/PIN ingredient-level drug concept |
+| **Selection Behavior** | `fhir-select:<code-id>` | *FHIR Action Selection* | HL7 FHIR R5 | Combinatorial choice logic (`exactly-one`, `all`, etc.) |
+| **Therapy Relationship** | `fhir-rel:<code-id>` | *FHIR Therapy Relationship* | HL7 FHIR R5 | Indication prerequisite (`indicated-only-with`, etc.) |
 
-    subgraph RegimenOptions["rwdkn:RegimenOption"]
-        RO1["RegimenOption 1: CombinationRegimen"]
-        PT["primaryTherapy: RxCUI:1991302 (Semaglutide)"]
-        CT1["concomitantTherapy: SNOMEDCT:226060000 (Diet)"]
-        CT2["concomitantTherapy: SNOMEDCT:229065009 (Exercise)"]
-    end
+---
 
-    Treatment -->|rwdkn:permittedRegimenGroup| RCG
-    RCG -->|rwdkn:regimenOption| RO1
-    RO1 --> PT
-    RO1 --> CT1
-    RO1 --> CT2
+## 3. Physical Wire Serialization Contract (Manifest-Bound Sidecar)
+
+To prevent breaking the closed 23-column KGX TSV contract, the physical export format uses a **manifest-bound structured companion artifact (`regimens.jsonl`)**:
+
+```text
+application/kg-data/kgx/dailymed/
+├── nodes.tsv                 # Standard 23-column KGX Nodes
+├── edges.tsv                 # Standard 23-column KGX Edges (TREATS edge with r.id)
+├── regimens.jsonl            # Structured RegimenChoiceGroup & RegimenOption records
+└── export_manifest.json      # Checksums for nodes, edges, and regimens.jsonl
+```
+
+### 3.1. `regimens.jsonl` Record Schema
+Each line in `regimens.jsonl` is a JSON record keyed to the canonical edge `association_id`:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "association_id": "urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "therapy_relationship": "indicated-only-with",
+  "regimen_group": {
+    "id": "urn:uuid:a1b2c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d",
+    "selection_behavior": "all",
+    "options": [
+      {
+        "id": "urn:uuid:b2c3d4e5-f6a7-5b8c-9d0e-1f2a3b4c5d6e",
+        "regimen_type": "combination",
+        "primary_therapy": "RXCUI:1991302",
+        "concomitant_therapies": [
+          {
+            "curie": "SNOMEDCT:284071006",
+            "name": "Dietary education",
+            "raw_text": "diet"
+          },
+          {
+            "curie": "SNOMEDCT:229065009",
+            "name": "Exercise therapy",
+            "raw_text": "exercise"
+          }
+        ]
+      }
+    ]
+  },
+  "status": "accepted",
+  "evidence_sentence_id": "s-ozempic-ind-01"
+}
 ```
 
 ---
 
-## 4. Proposed Multi-Phase Implementation
+## 4. Multi-Phase Implementation Plan
 
-### Phase 1: LinkML Schema, SHACL Shapes & Closed Contract Generation
+### Phase 0: Schema & LinkML Contract Modeling
 **Target Repository:** `rwdkn-data-pipeline` (`subprojects/biolink-bridge/`)
 
-#### 1.1. Update LinkML Model (`subprojects/biolink-bridge/schema/rwdkn-model.yaml`)
-* Define new classes:
-  * `RegimenChoiceGroup`: slots `[id, selection_behavior, regimen_options]`
-  * `RegimenOption`: slots `[id, regimen_type, selection_behavior, primary_therapy, concomitant_therapies]`
-  * `ProhibitedRegimen`: slots `[id, prohibited_therapies, prohibition_reason]`
-* Define enums reusing FHIR ValueSets:
-  * `ActionSelectionBehaviorEnum`: `[all, any, all_or_none, exactly_one, at_most_one, one_or_more]`
-  * `TherapyRelationshipTypeEnum`: `[indicated_only_with, contraindicated_with, replaces, adjunct_to]`
-  * `RegimenTypeEnum`: `[combination_regimen, explicit_monotherapy, prohibited_regimen]`
-
-#### 1.2. Create SHACL Shape Definitions (`subprojects/biolink-bridge/resources/rwdkn-regimen-shapes.ttl`)
-* Enforce structural validation rules:
-  * Every `RegimenChoiceGroup` must have at least 1 `rwdkn:regimenOption`.
-  * Every `RegimenOption` must declare `rwdkn:primaryTherapy`.
-  * `CombinationRegimen` must declare $\ge 1$ `rwdkn:concomitantTherapy`.
-  * `ExplicitMonotherapy` must declare 0 `rwdkn:concomitantTherapy`.
-
-#### 1.3. Contract Regeneration
-* Run `gen_contracts.py` to regenerate all 7 JSON schemas, validation IR, and `MANIFEST.json`.
+1. **Update LinkML Model (`subprojects/biolink-bridge/schema/rwdkn-model.yaml`)**:
+   * Add `RegimenChoiceGroup` and `RegimenOption` classes with explicit FHIR code mappings.
+   * Add `ActionSelectionBehaviorEnum` with canonical values (`all`, `any`, `all-or-none`, `exactly-one`, `at-most-one`, `one-or-more`).
+   * Add `TherapyRelationshipEnum` with canonical values (`indicated-only-with`, `contraindicated-only-with`, `replace-other-therapy`, etc.).
+   * Add `RegimenTypeEnum` with compositional values (`combination`, `monotherapy`).
+2. **Generate Structural Contracts**:
+   * Run `gen_contracts.py` to regenerate JSON Schemas, context, and validation IR.
+3. **Add SHACL Overlay (`subprojects/biolink-bridge/resources/rwdkn-regimen-shapes.ttl`)**:
+   * Enforce graph shape integrity: options must have primary therapy; combination options must have $\ge 1$ concomitant therapy; monotherapy must have 0 concomitant therapies.
 
 ---
 
-### Phase 2: Stage 1 Assertion Extraction & Terminology Alignment
+### Phase 1: Stage 2 Extraction & Concept Normalization
 **Target Repository:** `rwdkn-data-pipeline` (`subprojects/assertion-engine/`, `subprojects/concept-align/`)
 
-#### 2.1. Extraction Prompt Schema (`subprojects/assertion-engine/`)
-* Update the structured LLM prompt in `assertion-engine` to output structured regimen objects alongside SPO triples:
-  ```json
-  {
-    "subject": "Semaglutide",
-    "predicate": "treats",
-    "object": "Type 2 Diabetes Mellitus",
-    "regimen": {
-      "selection_behavior": "all",
-      "options": [
-        {
-          "regimen_type": "combination",
-          "concomitant_therapies": [
-            {"name": "diet", "category": "Lifestyle"},
-            {"name": "exercise", "category": "Lifestyle"}
-          ]
-        }
-      ]
-    },
-    "evidence": "RYBELSUS and OZEMPIC tablets are indicated: as an adjunct to diet and exercise to improve glycemic control in adults with type 2 diabetes mellitus."
-  }
-  ```
-
-#### 2.2. Terminology Normalization (`subprojects/concept-align/`)
-* Ground lifestyle, dietary, and non-drug therapeutic terms to standard ontologies:
-  * *Diet / Dietary modification* $\rightarrow$ `SNOMEDCT:226060000` (*Dietary education*) or `NCIT:C15250`
-  * *Exercise / Physical activity* $\rightarrow$ `SNOMEDCT:229065009` (*Exercise therapy*) or `NCIT:C156760`
-  * *Lifestyle modification* $\rightarrow$ `SNOMEDCT:429300007`
-* Ground concomitant drugs to RxNorm / UNII (`RXCUI:...`).
+1. **Stage 2 LLM Prompt Updates (`assertion-engine`)**:
+   * Update prompt schema to output structured `regimen` objects alongside SPO triples.
+   * Inherit `primary_therapy` deterministically from triple subject (`RXCUI`).
+2. **Concept Normalization (`concept-align`)**:
+   * Normalize non-drug therapy terms using the Terminology Binding Table (Section 2).
+   * Implement non-lossy quarantine: if a concomitant therapy cannot be grounded, tag the regimen record as `status: "quarantined"` with `raw_text` and route for manual review, while safely emitting the base treatment edge.
 
 ---
 
-### Phase 3: Wire Serialization & Quality Guardian Gates
+### Phase 2: Pipeline Export & Quality Guardian Gates
 **Target Repository:** `rwdkn-data-pipeline` (`subprojects/biolink-bridge/`, `subprojects/quality-guardian/`)
 
-#### 3.1. KGX Wire Serialization (`export_kgx.py`)
-* Maintain backward compatibility of `edges.tsv` while adding structured regimen serialization:
-  * **Option A (Dual-Write in `qualifications`)**: Encode JSON payload `regimen_choice_group={"behavior":"all","options":[...]}` in the `qualifications` slot.
-  * **Option B (Reified Edge Entities)**: Export `RegimenChoiceGroup` and `RegimenOption` as explicit nodes in `nodes.tsv` with connecting edges in `edges.tsv`.
-* Update `export_manifest.json` and export profiles with regimen statistics.
-
-#### 3.2. Quality Guardian Fail-Closed Gate (`validate_stage4_ontology.py`)
-* Add validation checks ensuring:
-  * `selection_behavior` matches permissible FHIR vocabulary.
-  * Concomitant therapy CURIEs are valid and normalized.
-  * Rejects ungrounded free-text therapies.
+1. **Export Sidecar (`export_kgx.py`)**:
+   * Emit `regimens.jsonl` alongside `nodes.tsv` and `edges.tsv`.
+   * Record `regimens_sha256`, `accepted_regimens_count`, and `quarantined_regimens_count` in `export_manifest.json`.
+2. **Quality Guardian Validation Gate (`validate_stage4_ontology.py`)**:
+   * Verify schema validity of `regimens.jsonl`.
+   * Verify that all therapy CURIEs match approved vocabularies and that deterministic UUIDv5 rules are respected.
 
 ---
 
-### Phase 4: Dual Serving Projections (Neo4j LPG + Apache Jena Fuseki RDF)
-**Target Repository:** `rwdkn-data-pipeline` (`subprojects/biolink-bridge/`)
+### Phase 3: Dual Serving Projections (Neo4j LPG + Apache Jena Fuseki RDF)
+**Target Repositories:** `rwdkn-data-pipeline`, `rwdkn-service`
 
-#### 4.1. Neo4j LPG Projection (`load_kgx_to_neo4j.py`)
-* Materialize graph topology:
-  ```cypher
-  (:Drug {id: 'RXCUI:1991302', name: 'semaglutide'})
-    -[:TREATS {id: 'urn:uuid:assoc-101', has_evidence: '...'}]->
-    (:Disease {id: 'SNOMEDCT:44054006', name: 'Type 2 diabetes mellitus'})
-  
-  (:Association {id: 'urn:uuid:assoc-101'})
-    -[:HAS_REGIMEN_CHOICE]->(:RegimenChoiceGroup {id: 'urn:uuid:rcg-01', selection_behavior: 'all'})
-    -[:HAS_OPTION]->(:RegimenOption {id: 'urn:uuid:ro-01', regimen_type: 'combination'})
-    -[:CONCOMITANT_THERAPY]->(:Therapy {id: 'SNOMEDCT:226060000', name: 'Dietary education'})
-  ```
-* Populate shortcut edge property `r.regimen_type = 'combination'` on the direct `TREATS` edge for fast query traversal.
+1. **Consolidated Neo4j Loader (`load_kgx_to_neo4j.py` & `rwdkn-service/.../neo4j_loader.py`)**:
+   * Materialize reified regimen topology in Neo4j:
+     ```cypher
+     (:Drug {id: 'RXCUI:1991302'})-[:TREATS {id: 'urn:uuid:assoc-101'}]->(:Disease {id: 'SNOMEDCT:44054006'})
+     (:Association {id: 'urn:uuid:assoc-101'})-[:HAS_REGIMEN_CHOICE]->(:RegimenChoiceGroup {id: 'urn:uuid:rcg-01', selection_behavior: 'all'})
+     (:RegimenChoiceGroup {id: 'urn:uuid:rcg-01'})-[:HAS_OPTION]->(:RegimenOption {id: 'urn:uuid:ro-01', regimen_type: 'combination'})
+     (:RegimenOption {id: 'urn:uuid:ro-01'})-[:CONCOMITANT_THERAPY]->(:Therapy {id: 'SNOMEDCT:284071006', name: 'Dietary education'})
+     (:RegimenOption {id: 'urn:uuid:ro-01'})-[:CONCOMITANT_THERAPY]->(:Therapy {id: 'SNOMEDCT:229065009', name: 'Exercise therapy'})
+     ```
+   * Add uniqueness constraints and indexes on `(Association.id)`, `(RegimenChoiceGroup.id)`, and `(RegimenOption.id)`.
+2. **RDF / Fuseki Projection (`rdf_projection.py` & `rwdkn-service`)**:
+   * Project reified Turtle / N-Triples:
+     ```turtle
+     @prefix biolink:     <https://w3id.org/biolink/vocab/> .
+     @prefix fhir-select: <http://hl7.org/fhir/action-selection-behavior/> .
+     @prefix rwdkn:       <https://w3id.org/realkg/> .
 
-#### 4.2. Apache Jena Fuseki RDF Projection (`rdf_projection.py`)
-* Project canonical Turtle / N-Triples:
-  ```turtle
-  @prefix biolink:     <https://w3id.org/biolink/vocab/> .
-  @prefix fhir-select: <http://hl7.org/fhir/action-selection-behavior/> .
-  @prefix rwdkn:       <https://w3id.org/realkg/> .
+     <urn:uuid:assoc-101> a biolink:ChemicalToDiseaseOrPhenotypicFeatureAssociation ;
+         biolink:subject <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
+         biolink:predicate biolink:treats ;
+         biolink:object <http://snomed.info/id/44054006> ;
+         rwdkn:permittedRegimenGroup <urn:uuid:rcg-01> .
 
-  <urn:uuid:assoc-101> a biolink:ChemicalToDiseaseOrPhenotypicFeatureAssociation ;
-      biolink:subject <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
-      biolink:predicate biolink:treats ;
-      biolink:object <http://snomed.info/id/44054006> ;
-      rwdkn:permittedRegimenGroup <urn:uuid:rcg-01> ;
-      biolink:has_evidence "RYBELSUS and OZEMPIC tablets are indicated: as an adjunct to diet and exercise..." .
+     <urn:uuid:rcg-01> a rwdkn:RegimenChoiceGroup ;
+         rwdkn:selectionBehavior fhir-select:all ;
+         rwdkn:regimenOption <urn:uuid:ro-01> .
 
-  <urn:uuid:rcg-01> a rwdkn:RegimenChoiceGroup ;
-      rwdkn:selectionBehavior fhir-select:all ;
-      rwdkn:regimenOption <urn:uuid:ro-01> .
-
-  <urn:uuid:ro-01> a rwdkn:RegimenOption ;
-      rwdkn:regimenType rwdkn:CombinationRegimen ;
-      rwdkn:primaryTherapy <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
-      rwdkn:concomitantTherapy <http://snomed.info/id/226060000> ,
-                               <http://snomed.info/id/229065009> .
-  ```
+     <urn:uuid:ro-01> a rwdkn:RegimenOption ;
+         rwdkn:regimenType rwdkn:CombinationRegimen ;
+         rwdkn:primaryTherapy <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
+         rwdkn:concomitantTherapy <http://snomed.info/id/284071006> ,
+                                  <http://snomed.info/id/229065009> .
+     ```
+   * Include Fuseki dataset publication and verification in `rwdkn-service/scripts/install_release.py`.
 
 ---
 
-### Phase 5: Automated Test Gates & CQ-5 Parity Harness
+### Phase 4: Automated CQ-5 Dual-Graph Parity Gate
 **Target Repository:** `rwdkn-data-pipeline` (`subprojects/biolink-bridge/tests/`)
 
-#### 5.1. Unit & SHACL Tests
-* `test_regimen_choice_shacl.py`: Validate generated RDF graph against `rwdkn-regimen-shapes.ttl` using `pyshacl`.
-* `test_regimen_serialization.py`: Test round-trip export, serialization, and deserialization of single-agent, multi-agent, and nested regimen choices.
+Implement `test_cq5_dual_store_parity.py` comparing canonical option-level tuples:
 
-#### 5.2. Live Dual-Store Parity Gate (`test_cq5_dual_store_parity.py`)
-* Execute parallel queries for Semaglutide (`RXCUI:1991302`), Tirzepatide (`RXCUI:2601723`), and Liraglutide (`RXCUI:897122`):
-  * **Cypher Query**:
-    ```cypher
-    MATCH (d:Drug)-[r:TREATS]->(dis:Disease)
-    MATCH (assoc:Association {id: r.id})-[:HAS_REGIMEN_CHOICE]->(rcg)-[:HAS_OPTION]->(opt)-[:CONCOMITANT_THERAPY]->(t:Therapy)
-    RETURN d.name AS drug, dis.name AS indication, rcg.selection_behavior AS behavior, collect(t.name) AS concomitant
-    ```
-  * **SPARQL Query**:
-    ```sparql
-    PREFIX biolink: <https://w3id.org/biolink/vocab/>
-    PREFIX rwdkn:   <https://w3id.org/realkg/>
-    SELECT ?drug ?indication ?behavior (GROUP_CONCAT(?therapy; separator=", ") AS ?concomitant) WHERE {
-        ?assoc a biolink:ChemicalToDiseaseOrPhenotypicFeatureAssociation ;
-               biolink:subject ?d ;
-               biolink:predicate biolink:treats ;
-               biolink:object ?dis ;
-               rwdkn:permittedRegimenGroup ?rcg .
-        ?rcg rwdkn:selectionBehavior ?behavior ;
-             rwdkn:regimenOption ?opt .
-        ?opt rwdkn:concomitantTherapy ?t .
-    } GROUP BY ?drug ?indication ?behavior
-    ```
-* Assert tuple-level equivalence of results between Neo4j and Fuseki.
+#### 4.1. Option-Level Canonical Parity Tuple
+```python
+@dataclass(frozen=True)
+class RegimenOptionTuple:
+    association_id: str
+    drug_curie: str
+    indication_curie: str
+    choice_group_id: str
+    selection_behavior: str
+    regimen_option_id: str
+    regimen_type: str
+    primary_therapy_curie: str
+    concomitant_therapies: tuple[str, ...]  # Alphabetically sorted CURIEs
+```
+
+#### 4.2. Exact Cypher Parity Query
+```cypher
+MATCH (d:Drug)-[r:TREATS]->(dis:Disease)
+MATCH (assoc:Association {id: r.id})-[:HAS_REGIMEN_CHOICE]->(rcg:RegimenChoiceGroup)
+MATCH (rcg)-[:HAS_OPTION]->(opt:RegimenOption)
+OPTIONAL MATCH (opt)-[:CONCOMITANT_THERAPY]->(t:Therapy)
+WITH r.id AS association_id,
+     d.id AS drug_curie,
+     dis.id AS indication_curie,
+     rcg.id AS choice_group_id,
+     rcg.selection_behavior AS selection_behavior,
+     opt.id AS regimen_option_id,
+     opt.regimen_type AS regimen_type,
+     d.id AS primary_therapy_curie,
+     t.id AS therapy_curie
+ORDER BY therapy_curie
+RETURN association_id, drug_curie, indication_curie, choice_group_id, selection_behavior,
+       regimen_option_id, regimen_type, primary_therapy_curie,
+       collect(DISTINCT therapy_curie) AS concomitant_therapies;
+```
+
+#### 4.3. Exact SPARQL Parity Query
+```sparql
+PREFIX biolink:     <https://w3id.org/biolink/vocab/>
+PREFIX fhir-select: <http://hl7.org/fhir/action-selection-behavior/>
+PREFIX rwdkn:       <https://w3id.org/realkg/>
+
+SELECT ?association_id ?drug_iri ?indication_iri ?choice_group_id ?selection_behavior
+       ?regimen_option_id ?regimen_type ?primary_therapy_iri
+       (GROUP_CONCAT(DISTINCT STR(?therapy_iri); separator="|") AS ?concomitant_therapies_concat)
+WHERE {
+    ?assoc a biolink:ChemicalToDiseaseOrPhenotypicFeatureAssociation ;
+           biolink:subject ?drug_iri ;
+           biolink:predicate biolink:treats ;
+           biolink:object ?indication_iri ;
+           rwdkn:permittedRegimenGroup ?rcg .
+    
+    ?rcg rwdkn:selectionBehavior ?selection_behavior ;
+         rwdkn:regimenOption ?opt .
+    
+    ?opt rwdkn:regimenType ?regimen_type ;
+         rwdkn:primaryTherapy ?primary_therapy_iri .
+    
+    OPTIONAL {
+        ?opt rwdkn:concomitantTherapy ?therapy_iri .
+    }
+    BIND(STR(?assoc) AS ?association_id)
+    BIND(STR(?rcg) AS ?choice_group_id)
+    BIND(STR(?opt) AS ?regimen_option_id)
+}
+GROUP BY ?association_id ?drug_iri ?indication_iri ?choice_group_id ?selection_behavior
+         ?regimen_option_id ?regimen_type ?primary_therapy_iri
+```
+
+The test maps SPARQL IRIs to CURIEs, sorts the concomitant therapy lists, and asserts exact mathematical set equality against Neo4j results.
 
 ---
 
-## 5. Verification Plan & Review Checklist
+## 5. Verification Commands & Acceptance Criteria
 
-### 5.1. Automated Test Verification
 ```bash
-# 1. Regenerate contracts & check integrity
-cd subprojects/biolink-bridge && uv run python gen_contracts.py --check
+# 1. Verify LinkML schema and regenerate contract artifacts
+cd subprojects/biolink-bridge && uv run python gen_contracts.py && uv run python gen_contracts.py --check
 
-# 2. Run SHACL structural validation
-uv run pytest tests/test_shacl_validation.py -v
+# 2. Run SHACL structural validation on regimen graphs
+uv run pytest tests/test_regimen_choice_shacl.py -v
 
-# 3. Run full dual-store CQ-5 parity suite
+# 3. Run unit tests on sidecar serialization and deterministic UUIDv5 rules
+uv run pytest tests/test_regimen_serialization.py -v
+
+# 4. Run live dual-store CQ-5 parity integration gate
 uv run pytest tests/test_cq5_dual_store_parity.py -v
 
-# 4. Run Quality Guardian validation gate
+# 5. Run Quality Guardian gate checks
 cd ../quality-guardian && uv run pytest tests/
 ```
 
-### 5.2. Review Questions for Secondary AI Tool
-When evaluating this implementation plan, the reviewing AI tool should assess:
-1. **Standards Compliance**: Does the plan accurately adhere to HL7 FHIR `action-selection-behavior` and BioLink Association models?
-2. **Open-World Correctness**: Is the rule *"missing group = unspecified (not monotherapy)"* strictly maintained across all stages?
-3. **Combinatorial Integrity**: Does the `RegimenOption` bundling prevent illegitimate permutations of therapies?
-4. **Dual-Store Realism**: Are the Cypher and SPARQL query models computationally efficient and mathematically equivalent?
-5. **Terminology Rigor**: Are non-drug therapies adequately constrained to standard vocabularies (SNOMED-CT / NCIT / MeSH)?
+### Acceptance Checklist
+* [ ] All FHIR selection and therapy relationship codes use exact case-sensitive, hyphenated standards.
+* [ ] Concomitant therapies use verified SNOMED-CT / RxNorm CURIEs from the Terminology Table.
+* [ ] Missing regimen data remains `unspecified` and is never converted to monotherapy.
+* [ ] `regimens.jsonl` is checksum-bound in `export_manifest.json`.
+* [ ] Unresolved therapy phrases are quarantined with evidence without dropping base SPO edges.
+* [ ] Option-level Cypher and SPARQL parity test passes with 100% tuple equality on Semaglutide, Tirzepatide, and Liraglutide.
+* [ ] ISSUE-9 is closed only upon full passing of the acceptance suite.
