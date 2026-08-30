@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenAI Model Selection Recommendation</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f6f8fb; --card:#fff; --text:#172033; --muted:#5f6b7a; --accent:#166534; --line:#d7dee8; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#111827; --card:#1f2937; --text:#f3f4f6; --muted:#c2c9d2; --accent:#86efac; --line:#374151; } }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif; }
+    main { max-width:960px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+    h1,h2 { line-height:1.2; } h1 { margin-top:0; }
+    h2 { margin-top:2rem; border-bottom:1px solid var(--line); padding-bottom:.35rem; }
+    .recommendation { background:var(--card); border-left:5px solid var(--accent); border-radius:8px; padding:1rem 1.25rem; box-shadow:0 2px 8px #0001; }
+    .muted { color:var(--muted); } table { width:100%; border-collapse:collapse; margin:1rem 0; background:var(--card); }
+    th,td { text-align:left; vertical-align:top; padding:.65rem .75rem; border:1px solid var(--line); } th { background:#16653412; }
+    code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; } pre { background:#111827; color:#e5e7eb; padding:1rem; border-radius:6px; overflow:auto; }
+    a { color:#2563eb; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="muted">Prepared: 2026-08-10</p>
+  <h1>OpenAI Model Selection Recommendation</h1>
+  <section class="recommendation"><strong>Default: <code>gpt-5.6-terra</code> with <code>medium</code> reasoning.</strong> Keep Luna for routine, low-risk volume and Sol for unusually difficult or high-risk work.</section>
+
+  <h2>Evidence reviewed</h2>
+  <p>The activity window was 2026-08-03 through 2026-08-10.</p>
+  <ul>
+    <li>GitHub: 11 repositories pushed, 88 authored commits on default branches, and 10 pull requests opened and merged.</li>
+    <li>Local checkout: 101 commits reachable across local refs, about 311 repository-file entries touched, and about 89,658 insertions versus 4,921 deletions.</li>
+    <li>Large line counts were dominated by generated ontology, SHACL, schema, fixture, audit, and release artifacts.</li>
+    <li>Representative work included stateful Docker volumes, Airflow, Proxmox and Cloudflare deployments, federation routing, LinkML/SHACL contracts, PostgreSQL promotion/rollback, and release verification.</li>
+  </ul>
+  <p>This is not mainly frontier algorithm research, but it is context-heavy and operationally consequential. Terra is a safer everyday balance than Luna, while Sol is unnecessary for most individual tasks.</p>
+
+  <h2>Routing policy</h2>
+  <table><thead><tr><th>Work</th><th>Model</th><th>Reasoning</th></tr></thead><tbody>
+    <tr><td>Status, logs, inventories, documentation, simple YAML</td><td><code>gpt-5.6-luna</code></td><td>low or medium</td></tr>
+    <tr><td>Implementation, debugging, tests, CI, Docker, Compose, one-to-two repositories</td><td><code>gpt-5.6-terra</code></td><td>medium</td></tr>
+    <tr><td>Cross-repository architecture, production promotion/rollback, security, recovery, ambiguous ownership</td><td><code>gpt-5.6-sol</code></td><td>high or xhigh</td></tr>
+  </tbody></table>
+  <p>Escalate from Terra when the task crosses several repositories, can damage production state, or fails verification twice.</p>
+
+  <h2>Cost comparison</h2>
+  <table><thead><tr><th>Model</th><th>Input / 1M tokens</th><th>Output / 1M tokens</th><th>Relative to Sol</th></tr></thead><tbody>
+    <tr><td>GPT-5.6 Sol</td><td>$5.00</td><td>$30.00</td><td>100%</td></tr>
+    <tr><td>GPT-5.6 Terra</td><td>$2.00</td><td>$12.00</td><td>40%</td></tr>
+    <tr><td>GPT-5.6 Luna</td><td>$0.20</td><td>$1.20</td><td>4%</td></tr>
+  </tbody></table>
+  <p>A practical mix is approximately 70% Terra, 20% Luna, and 10% Sol. With similar token usage, this is roughly 60% lower model cost than using Sol everywhere. These are API prices; Codex subscription accounting may differ.</p>
+
+  <h2>Automatic model selection</h2>
+  <p>Current official OpenAI API guidance documents explicit model selection. The <code>gpt-5.6</code> alias routes to <code>gpt-5.6-sol</code>; it is not a task-aware cost router. No official API setting was found that dynamically chooses Sol, Terra, or Luna from request complexity.</p>
+  <p>Use Terra as a fixed default with explicit escalation, or implement a small client-side router using task labels such as <code>routine</code>, <code>implementation</code>, and <code>high-risk</code>. If a Codex client shows an <code>Auto</code> option, verify its actual model selection and billing for your account.</p>
+
+  <h2>Suggested default configuration</h2>
+  <pre><code>model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"</code></pre>
+
+  <h2>Official OpenAI sources</h2>
+  <ul>
+    <li><a href="https://developers.openai.com/api/docs/guides/latest-model">Model guidance</a></li>
+    <li><a href="https://developers.openai.com/api/docs/models/gpt-5.6-sol">GPT-5.6 Sol</a></li>
+    <li><a href="https://developers.openai.com/api/docs/models/gpt-5.6-terra">GPT-5.6 Terra</a></li>
+    <li><a href="https://developers.openai.com/api/docs/models/gpt-5.6-luna">GPT-5.6 Luna</a></li>
+  </ul>
+</main>
+</body>
+</html>
