@@ -109,15 +109,15 @@ assert make_choice_group_id(
     "urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8",
     "all",
     "indicated-only-with"
-) == "urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30"
+) == "urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5"
 
 # Test Vector 2: Semaglutide + (Diet + Exercise) Option
 assert make_regimen_option_id(
-    "urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30",
+    "urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5",
     "combination",
     "RXCUI:1991302",
     ["SNOMEDCT:284071006", "SNOMEDCT:229065009"]
-) == "urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8"
+) == "urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7"
 ```
 
 ---
@@ -147,11 +147,12 @@ application/kg-data/kgx/dailymed/
   "evidence_sentence_id": "s-ozempic-ind-01",
   "raw_evidence_text": "as an adjunct to diet and exercise to improve glycemic control in adults with type 2 diabetes mellitus",
   "regimen_group": {
-    "id": "urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30",
+    "id": "urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5",
     "selection_behavior": "all",
+    "clinical_disposition": "permitted",
     "options": [
       {
-        "id": "urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8",
+        "id": "urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7",
         "regimen_type": "combination",
         "primary_therapy": "RXCUI:1991302",
         "concomitant_therapies": [
@@ -186,6 +187,7 @@ application/kg-data/kgx/dailymed/
   "unresolved_terms": ["behavioral coaching"],
   "proposed_regimen_group": {
     "selection_behavior": "all",
+    "clinical_disposition": "permitted",
     "options": [
       {
         "regimen_type": "combination",
@@ -211,7 +213,7 @@ application/kg-data/kgx/dailymed/
    * Add `ActionSelectionBehaviorEnum`, `TherapyRelationshipEnum`, `RegimenTypeEnum`, `RecordStatusEnum`, and `ClinicalDispositionEnum`.
    * Add prefixes `fhir-select` and `fhir-rel`.
 2. **Master Context & JSON-LD Expansion (`resources/master_context.jsonld`)**:
-   * Map `fhir-select`, `fhir-rel`, `rwdkn:RegimenChoiceGroup`, `rwdkn:RegimenOption`, `rwdkn:selectionBehavior`, `rwdkn:therapyRelationship`, `rwdkn:primaryTherapy`, and `rwdkn:concomitantTherapy`.
+   * Map `fhir-select`, `fhir-rel`, `rwdkn:RegimenChoiceGroup`, `rwdkn:RegimenOption`, `rwdkn:regimenChoiceGroup`, `rwdkn:clinicalDisposition`, `rwdkn:selectionBehavior`, `rwdkn:therapyRelationship`, `rwdkn:primaryTherapy`, and `rwdkn:concomitantTherapy`.
 3. **Update Contract Generator (`gen_contracts.py`)**:
    * Generate `regimen_record.schema.json` with discriminated `oneOf` branches for `accepted` and `quarantined` records.
    * Include `regimen_record.schema.json` in `resources/generated/MANIFEST.json`.
@@ -253,21 +255,22 @@ application/kg-data/kgx/dailymed/
      ```cypher
      (:Drug {id: 'RXCUI:1991302'})-[:TREATS {id: 'urn:uuid:assoc-101'}]->(:Disease {id: 'SNOMEDCT:44054006'})
      (:Association {id: 'urn:uuid:assoc-101'})-[:HAS_REGIMEN_CHOICE]->(:RegimenChoiceGroup {
-         id: 'urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30',
+         id: 'urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5',
          selection_behavior: 'all',
-         therapy_relationship: 'indicated-only-with'
+         therapy_relationship: 'indicated-only-with',
+         clinical_disposition: 'permitted'
      })
-     (:RegimenChoiceGroup {id: 'urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30'})-[:HAS_OPTION]->(:RegimenOption {
-         id: 'urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8',
+     (:RegimenChoiceGroup {id: 'urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5'})-[:HAS_OPTION]->(:RegimenOption {
+         id: 'urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7',
          regimen_type: 'combination',
          primary_therapy: 'RXCUI:1991302'
      })
-     (:RegimenOption {id: 'urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8'})-[:PRIMARY_THERAPY]->(:Drug {id: 'RXCUI:1991302'})
-     (:RegimenOption {id: 'urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8'})-[:CONCOMITANT_THERAPY]->(:KGXNode:Procedure:TherapyContext:Therapy {
+     (:RegimenOption {id: 'urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7'})-[:PRIMARY_THERAPY]->(:Drug {id: 'RXCUI:1991302'})
+     (:RegimenOption {id: 'urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7'})-[:CONCOMITANT_THERAPY]->(:KGXNode:Procedure:TherapyContext:Therapy {
          id: 'SNOMEDCT:284071006',
          name: 'Dietary treatment for disorder'
      })
-     (:RegimenOption {id: 'urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8'})-[:CONCOMITANT_THERAPY]->(:KGXNode:Procedure:TherapyContext:Therapy {
+     (:RegimenOption {id: 'urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7'})-[:CONCOMITANT_THERAPY]->(:KGXNode:Procedure:TherapyContext:Therapy {
          id: 'SNOMEDCT:229065009',
          name: 'Exercise therapy'
      })
@@ -286,14 +289,15 @@ application/kg-data/kgx/dailymed/
          biolink:subject <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
          biolink:predicate biolink:treats ;
          biolink:object <http://snomed.info/id/44054006> ;
-         rwdkn:permittedRegimenGroup <urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30> .
+         rwdkn:regimenChoiceGroup <urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5> .
 
-     <urn:uuid:d12c8b82-9388-51f6-9f89-8d769851ce30> a rwdkn:RegimenChoiceGroup ;
+     <urn:uuid:a359a04e-cf9f-5092-850a-c05401caacc5> a rwdkn:RegimenChoiceGroup ;
          rwdkn:selectionBehavior fhir-select:all ;
          rwdkn:therapyRelationship fhir-rel:indicated-only-with ;
-         rwdkn:regimenOption <urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8> .
+         rwdkn:clinicalDisposition "permitted" ;
+         rwdkn:regimenOption <urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7> .
 
-     <urn:uuid:e36cb07f-fb3e-5300-98b7-6f81df2220f8> a rwdkn:RegimenOption ;
+     <urn:uuid:3d73b4a5-081c-559b-bd47-3803c2b722a7> a rwdkn:RegimenOption ;
          rwdkn:regimenType rwdkn:CombinationRegimen ;
          rwdkn:primaryTherapy <https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=1991302> ;
          rwdkn:concomitantTherapy <http://snomed.info/id/284071006> ,
@@ -322,11 +326,11 @@ Acceptance testing includes an explicit 8-scenario versioned gold test suite (`t
 | Scenario ID | Test Case Category | Clinical Description / Input Text | Action Selection | Therapy Relationship | Clinical Disposition | Expected Concomitant CURIEs | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GS-01` | Positive Adjunct Pair | *"as an adjunct to diet and exercise to improve glycemic control in T2D"* | `all` | `indicated-only-with` | `permitted` | `["SNOMEDCT:229065009", "SNOMEDCT:284071006"]` | `accepted` |
-| `GS-02` | Explicit Monotherapy | *"indicated as monotherapy for the treatment of hypertension"* | `exactly-one` | `indicated-only-with` | `permitted` | `[]` | `accepted` |
+| `GS-02` | Explicit Monotherapy | *"indicated as monotherapy for the treatment of hypertension"* | `exactly-one` | `null` (omitted) | `permitted` | `[]` | `accepted` |
 | `GS-03` | Unspecified (Absence) | *"indicated for the treatment of major depressive disorder"* | `N/A` (No record emitted) | `N/A` | `N/A` | `[]` | `N/A` |
 | `GS-04` | Single Required Therapy | *"indicated in combination with metformin for glycemic control"* | `all` | `indicated-only-with` | `permitted` | `["RXCUI:6809"]` (Metformin) | `accepted` |
 | `GS-05` | Disjunctive Choice `(A+B) OR (C+D)` | *"indicated with diet and exercise, or with metformin and diet"* | `exactly-one` | `indicated-only-with` | `permitted` | 2 Options: `(Diet+Exercise)`, `(Metformin+Diet)` | `accepted` |
-| `GS-06` | Contraindicated Combination | *"contraindicated in combination with GLP-1 receptor agonists"* | `all` | `contraindicated-only-with` | `contraindicated` | `["MED-RT:N0000175574"]` (GLP-1 RA EPC Class) | `accepted` |
+| `GS-06` | Contraindicated Combination | *"contraindicated in combination with GLP-1 receptor agonists"* | `all` | `contraindicated-only-with` | `contraindicated` | `["MED-RT:N0000178480"]` (GLP-1 RA EPC Class) | `accepted` |
 | `GS-07` | Unresolved Phrase | *"as an adjunct to behavioral coaching"* | `N/A` | `indicated-only-with` | `permitted` | `[]` (`unresolved_terms: ["behavioral coaching"]`) | `quarantined` |
 | `GS-08` | Legacy Epoch-3/0.7.0 Export | Pre-regimen DailyMed export without `regimens.jsonl` | `N/A` | `N/A` | `N/A` | `[]` | `unspecified` |
 
