@@ -188,6 +188,27 @@ Three independent axes:
 
 ## Where to look first if resuming
 
+
+### 6. Full Code + Data Deployments to Linode and PVE2 (11:28 - 11:36 EDT)
+
+1. **Artifact Bundle Rebuild & Sync (`20260916`)**:
+   - Re-executed `scripts/cloud_demo_build_artifact.sh --version 20260916` to package Postgres dump, KGX exports, and all 56 DailyMed SPL HTML files into `/usr/kpcs/share_write/real-kg/jenkins/cloud-demo-artifacts/20260916/html`.
+   - Uploaded bundle delta to MinIO S3 via `scripts/s3_storage.py upload-dir /usr/kpcs/share_write/real-kg/jenkins/cloud-demo-artifacts/20260916 runs/20260916` (62 files uploaded).
+2. **Jenkins Coordinator Deployments (`REFRESH_SCOPE=both`)**:
+   - **Linode (`real-kg-demo`)**: Triggered `nlmkn-coordinator` Build #102 (`DEPLOYMENT_ID=linode`, `REFRESH_SCOPE=both`, `ARTIFACT_VERSION=20260916`). Result: **SUCCESS** (180s duration; `rwdkn/pipeline` #30 **SUCCESS**).
+   - **PVE2 (`nlmkn-pve2`)**: Triggered `nlmkn-coordinator` Build #103 (`DEPLOYMENT_ID=pve2`, `REFRESH_SCOPE=both`, `ARTIFACT_VERSION=20260916`). Result: **SUCCESS** (194s duration; `rwdkn/pipeline` #31 **SUCCESS**).
+3. **Live Verification Matrix**:
+   - Linode `https://rwdkn.kolac.us/api/health`: `status: ok`
+   - Linode `https://rwdkn.kolac.us/assertions/0450d8a2-a88e-4849-9788-ed4f5246f223.html`: `HTTP/2 200`
+   - Linode `ground-truth` PostgreSQL cache: `candidate_count: 6778`, `all_candidate_count: 33264`, `candidate_cache_ready: true`
+   - PVE2 `https://rwdkn-pve2.kolac.us/api/health`: `status: ok`
+   - PVE2 `https://rwdkn-pve2.kolac.us/assertions/0450d8a2-a88e-4849-9788-ed4f5246f223.html`: `HTTP/2 200`
+   - PVE2 `ground-truth` PostgreSQL cache: `candidate_count: 6778`, `all_candidate_count: 33264`, `candidate_cache_ready: true`
+
+---
+
+## Next Session Checklist
+
 1. Read `~/development/.claude/CLAUDE.md` and `~/development/NLM/kg/CLAUDE.md` for full repo/
    convention context (this doc assumes you've already read those).
 2. `git -C <repo> log --oneline -10` in each repo above to confirm nothing has drifted since
@@ -195,3 +216,4 @@ Three independent axes:
 3. Re-check live health before assuming anything is still true — things move fast in this lab:
    `curl https://rwdkn.kolac.us/api/health`, `curl https://rwdkn-pve2.kolac.us/api/health`,
    `curl http://localhost:8080/job/nlmkn-coordinator/lastBuild/api/json?tree=result`.
+
