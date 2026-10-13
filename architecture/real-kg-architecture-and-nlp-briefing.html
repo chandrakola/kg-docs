@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REAL-KG · Architecture, Hybrid BioNLP & Knowledge Graph Integration Briefing</title>
+  <meta name="description" content="Technical Briefing and Architectural Reference for REAL-KG / RWDKN: Ingestion, Hybrid BioNLP, LLM Orchestration, Dual-Graph Topology, and Update Governance.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Light theme (Sapphire & Clinical Teal) */
+      --bg-canvas: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+      
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #94a3b8;
+      
+      --primary: #1e3a8a;       /* Deep NLM Navy */
+      --primary-light: #3b82f6; /* Classic Blue */
+      --primary-subtle: #eff6ff;
+      --accent: #0d9488;        /* Clinical Teal */
+      --accent-subtle: #f0fdfa;
+      --warning: #d97706;
+      --warning-subtle: #fffbeb;
+      --purple: #7c3aed;
+      --purple-subtle: #faf5ff;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-canvas: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border-subtle: #243044;
+      --border-strong: #334155;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      
+      --primary: #3b82f6;
+      --primary-light: #60a5fa;
+      --primary-subtle: #172554;
+      --accent: #14b8a6;
+      --accent-subtle: #134e4a;
+      --warning: #f59e0b;
+      --warning-subtle: #451a03;
+      --purple: #a855f7;
+      --purple-subtle: #3b0764;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Top Navigation Bar */
+    header.top-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: var(--transition);
+    }
+    [data-theme="dark"] header.top-header {
+      background: rgba(17, 24, 39, 0.85);
+    }
+
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nih-badge {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-title span.slash {
+      color: var(--text-faint);
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-action {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.825rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: var(--transition);
+    }
+    .btn-action:hover {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+
+    /* Layout */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 2rem;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      position: sticky;
+      top: 5rem;
+      height: calc(100vh - 6rem);
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+
+    aside.sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    aside.sidebar::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 4px;
+    }
+
+    .nav-section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-faint);
+      font-weight: 700;
+      margin: 1.25rem 0 0.5rem 0.75rem;
+    }
+    .nav-section-title:first-child {
+      margin-top: 0;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+    .nav-item a:hover {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+    }
+    .nav-item.active a {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    [data-theme="dark"] .nav-item.active a {
+      background: var(--primary-subtle);
+      color: var(--primary-light);
+    }
+
+    /* Main Content Area */
+    main.content {
+      min-width: 0;
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-subtle) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      margin-bottom: 2.5rem;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(13, 148, 136, 0.12) 0%, rgba(30, 58, 138, 0.05) 50%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.725rem;
+      font-weight: 600;
+    }
+    .chip-primary { background: var(--primary-subtle); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.2); }
+    .chip-accent { background: var(--accent-subtle); color: var(--accent); border: 1px solid rgba(20, 184, 166, 0.2); }
+    .chip-purple { background: var(--purple-subtle); color: var(--purple); border: 1px solid rgba(168, 85, 247, 0.2); }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.25;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-desc {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 900px;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .hero-meta-item {
+      font-size: 0.8rem;
+    }
+    .hero-meta-label {
+      color: var(--text-faint);
+      text-transform: uppercase;
+      font-size: 0.675rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .hero-meta-value {
+      color: var(--text-main);
+      font-weight: 600;
+      margin-top: 0.15rem;
+    }
+
+    /* Section Styling */
+    section.doc-section {
+      margin-bottom: 3.5rem;
+      scroll-margin-top: 5rem;
+    }
+
+    .section-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.015em;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-num {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .section-lead {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* Cards & Containers */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+    .card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Source Cards */
+    .source-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .source-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+    .source-card.dailymed::before { background: #3b82f6; }
+    .source-card.pubmed::before { background: #10b981; }
+    .source-card.faers::before { background: #f59e0b; }
+    .source-card.cprd::before { background: #8b5cf6; }
+
+    .source-card h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .source-tier {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.15rem 0.45rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+
+    .source-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      flex-grow: 1;
+    }
+
+    .source-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .tag {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+
+    /* Interactive Diagrams & Flowcharts */
+    .diagram-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      overflow-x: auto;
+    }
+
+    .diagram-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .diagram-subtitle {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* Tables */
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 1.5rem;
+      background: var(--bg-surface);
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--bg-subtle);
+      padding: 0.75rem 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    table.data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+    table.data-table tr:last-child td {
+      border-bottom: none;
+    }
+    table.data-table tr:hover td {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.725rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .status-verified { background: #dcfce7; color: #15803d; }
+    .status-partial { background: #fef3c7; color: #b45309; }
+    .status-adhoc { background: #f3e8ff; color: #6b21a8; }
+    [data-theme="dark"] .status-verified { background: #14532d; color: #86efac; }
+    [data-theme="dark"] .status-partial { background: #78350f; color: #fde68a; }
+    [data-theme="dark"] .status-adhoc { background: #581c87; color: #d8b4fe; }
+
+    /* Interactive Tab Component */
+    .tabs-header {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid var(--border-subtle);
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 0.65rem 1.15rem;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    [data-theme="dark"] .tab-btn.active {
+      color: var(--primary-light);
+      border-bottom-color: var(--primary-light);
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Interactive Pipeline Stage Stepper */
+    .stage-track {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .stage-node-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 0.75rem;
+      cursor: pointer;
+      text-align: left;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .stage-node-btn:hover {
+      border-color: var(--primary-light);
+      background: var(--bg-subtle);
+    }
+    .stage-node-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-subtle);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    [data-theme="dark"] .stage-node-btn.active {
+      border-color: var(--primary-light);
+      background: var(--primary-subtle);
+    }
+
+    .stage-num-badge {
+      font-size: 0.675rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-faint);
+      text-transform: uppercase;
+    }
+    .stage-node-btn.active .stage-num-badge {
+      color: var(--primary);
+    }
+    [data-theme="dark"] .stage-node-btn.active .stage-num-badge {
+      color: var(--primary-light);
+    }
+
+    .stage-node-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+    .stage-node-sub {
+      font-size: 0.725rem;
+      color: var(--text-muted);
+    }
+
+    .stage-detail-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .stage-pane {
+      display: none;
+    }
+    .stage-pane.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+
+    /* Code Blocks */
+    .code-box {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      font-family: var(--font-mono);
+      font-size: 0.825rem;
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      position: relative;
+      border: 1px solid var(--border-subtle);
+    }
+    .code-box .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+
+    .copy-btn {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #cbd5e1;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .copy-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; }
+      header.top-header, aside.sidebar, .btn-action, .tabs-header, .stage-track { display: none !important; }
+      .app-container { display: block !important; max-width: 100% !important; padding: 0 !important; }
+      .tab-content, .stage-pane { display: block !important; margin-bottom: 2rem !important; }
+      .card, .diagram-container, .stage-detail-panel { box-shadow: none !important; border-color: #cccccc !important; }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .app-container { grid-template-columns: 1fr; }
+      aside.sidebar { display: none; }
+      .stage-track { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+  <!-- Header -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <span class="nih-badge">NIH / NLM</span>
+        <div class="brand-title">
+          <span>REAL-KG</span>
+          <span class="slash">/</span>
+          <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">Architecture &amp; BioNLP Briefing</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-action" id="theme-toggle" title="Toggle Light / Dark mode">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span id="theme-label">Theme</span>
+        </button>
+        <button class="btn-action" onclick="window.print()" title="Print or Save as PDF">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Export PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+
+    <!-- Sticky Table of Contents -->
+    <aside class="sidebar">
+      <div class="nav-section-title">Overview</div>
+      <ul class="nav-list">
+        <li class="nav-item active"><a href="#executive-summary">01 Executive Summary</a></li>
+        <li class="nav-item"><a href="#use-cases-cq">02 Use Cases (CQ-1 to CQ-5)</a></li>
+      </ul>
+
+      <div class="nav-section-title">Architecture</div>
+      <ul class="nav-list">
+        <li class="nav-item"><a href="#data-sources">03 The 4 Evidence Tiers</a></li>
+        <li class="nav-item"><a href="#system-topology">04 Dual-Graph Topology</a></li>
+        <li class="nav-item"><a href="#pipeline-stages">05 Pipeline Stage Workflow</a></li>
+      </ul>
+
+      <div class="nav-section-title">Technical Engines</div>
+      <ul class="nav-list">
+        <li class="nav-item"><a href="#nlp-stack">06 Hybrid BioNLP Pipeline</a></li>
+        <li class="nav-item"><a href="#llm-governance">07 LLM Orchestration &amp; Safety</a></li>
+        <li class="nav-item"><a href="#k3-rdf-integration">08 K3 RDF &amp; Semantic Standards</a></li>
+      </ul>
+
+      <div class="nav-section-title">Operations</div>
+      <ul class="nav-list">
+        <li class="nav-item"><a href="#update-cadence">09 Update Cadence &amp; HITL</a></li>
+        <li class="nav-item"><a href="#audit-provenance">10 Audit &amp; Evidence Bedrock</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <div class="hero-badge-row">
+          <span class="chip chip-primary">NIH / NLM / LHNCBC</span>
+          <span class="chip chip-accent">Epoch-3 / Model 0.8.0</span>
+          <span class="chip chip-purple">Biolink 4.3.6 &amp; W3C OWL 2</span>
+        </div>
+        <h1 class="hero-title">REAL-KG Technical Architecture, BioNLP &amp; Graph Integration Briefing</h1>
+        <p class="hero-desc">
+          A unified engineering overview detailing data harmonization across FDA Structured Product Labels (DailyMed),
+          biomedical literature (PubMed), safety reports (FAERS), and real-world health data (CPRD), serving dual Property Graph (Neo4j)
+          and Semantic Web (RDF/SPARQL) representations.
+        </p>
+        <div class="hero-meta-grid">
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Prepared By</div>
+            <div class="hero-meta-value">Chandra Kola (NLM Applied Clinical Informatics)</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Collaborators</div>
+            <div class="hero-meta-value">Dr. Mehmet Kayaalp, Kathy, NLM Core &amp; K3</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Serving Stores</div>
+            <div class="hero-meta-value">Neo4j LPG (7,094 nodes) &amp; Jena Fuseki RDF</div>
+          </div>
+          <div class="hero-meta-item">
+            <div class="hero-meta-label">Audit Bedrock</div>
+            <div class="hero-meta-value">PostgreSQL (18.4k Triples, 105.8M UMLS)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: Executive Summary -->
+      <section id="executive-summary" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">01</span> Executive Summary</h2>
+            <p class="section-lead">The mission, scope, and engineering philosophy of REAL-KG / RWDKN.</p>
+          </div>
+        </div>
+        <div class="card">
+          <p style="margin-bottom: 1rem;">
+            <strong>REAL-KG</strong> (Real-World Evidence &amp; Adverse Event Knowledge Graph) is NLM's pharmaceutical knowledge network designed to bridge regulatory label assertions, peer-reviewed medical publications, post-marketing safety signals, and longitudinal real-world health data into an explainable, clinically auditable knowledge graph.
+          </p>
+          <div class="grid-2" style="margin-top: 1.25rem; margin-bottom: 0;">
+            <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+              <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: var(--text-main);">Separation of Audit from Serving</h4>
+              <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">
+                All clinical sentences, entity extractions, stage events, and transformation lifecycles are immutably persisted in PostgreSQL and MinIO. Graph databases (Neo4j and Jena Fuseki) serve as high-performance query projections.
+              </p>
+            </div>
+            <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm); border-left: 3px solid var(--accent);">
+              <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: var(--text-main);">Strict Deterministic BioNLP Grounding</h4>
+              <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">
+                LLMs are never trusted as black boxes. Sentence boundary detection (pySBD), biomedical NER (scispaCy), fuzzy evidence verification (rapidfuzz), and multi-tier UMLS/RxNav linking ensure zero hallucinated clinical facts.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Use Cases & Competency Questions -->
+      <section id="use-cases-cq" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">02</span> Supported Clinical Use Cases &amp; Competency Questions</h2>
+            <p class="section-lead">Real-world clinical questions that REAL-KG was built to answer across multi-source evidence.</p>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 100px;">CQ ID</th>
+                <th>Clinical Use Case &amp; Question</th>
+                <th>Harmonized Sources</th>
+                <th>Graph Capabilities Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style="color: var(--primary);">CQ-1</strong></td>
+                <td>
+                  <strong>Regulatory vs. Literature Discrepancies</strong><br>
+                  <em>"What adverse reactions or contraindications are documented in peer-reviewed PubMed trials that are not yet incorporated into FDA DailyMed package inserts?"</em>
+                </td>
+                <td>DailyMed + PubMed</td>
+                <td>Predicate alignment (<code>biolink:has_adverse_event</code>), source-discrepancy diffing, exact verbatim quote citations.</td>
+              </tr>
+              <tr>
+                <td><strong style="color: var(--primary);">CQ-2</strong></td>
+                <td>
+                  <strong>Pharmacologic Class Adverse Effect Profiling</strong><br>
+                  <em>"What class-wide adverse events are shared across all GLP-1 receptor agonists (e.g., pancreatitis, thyroid C-cell tumors) versus compound-specific events?"</em>
+                </td>
+                <td>DailyMed + RxClass / MED-RT</td>
+                <td>OWL 2 Punning class hierarchy (<code>rdfs:subClassOf</code>), multi-hop Cypher traversals across EPC/MoA/PE nodes.</td>
+              </tr>
+              <tr>
+                <td><strong style="color: var(--primary);">CQ-3</strong></td>
+                <td>
+                  <strong>Mechanism-of-Action (MoA) Hierarchies</strong><br>
+                  <em>"Which drug products share an identical molecular target or physiologic effect axis despite different approved therapeutic indications?"</em>
+                </td>
+                <td>DailyMed + RxNorm + UMLS</td>
+                <td>Cross-vocabulary normalization (RxCUI to MED-RT / ATC), semantic typing via <code>TUIClassifier</code>.</td>
+              </tr>
+              <tr>
+                <td><strong style="color: var(--primary);">CQ-4</strong></td>
+                <td>
+                  <strong>Spontaneous Safety Signals vs. Real-World Incidence</strong><br>
+                  <em>"How does the spontaneous reporting ratio (FAERS PRR/ROR) for acute pancreatitis compare against longitudinal incidence rates in EHR cohorts (CPRD Aurum)?"</em>
+                </td>
+                <td>FAERS + CPRD + DailyMed</td>
+                <td>Statistical association modeling (<code>biolink:associated_with</code>) with report count and cohort-history qualifiers.</td>
+              </tr>
+              <tr>
+                <td><strong style="color: var(--primary);">CQ-5</strong></td>
+                <td>
+                  <strong>Discrete Conditionality &amp; Adjunct Indications</strong><br>
+                  <em>"Which drugs are indicated strictly as an adjunct to diet and exercise for glycemic control in Type 2 Diabetes vs. approved for monotherapy or pediatric populations?"</em>
+                </td>
+                <td>DailyMed (SPL Text)</td>
+                <td>First-class edge qualifiers (<code>condition_qualifier: adjunct_to_diet_and_exercise</code>, <code>population_qualifier: adults_and_pediatrics_ge_10</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 3: The 4 Evidence Tiers -->
+      <section id="data-sources" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">03</span> The Four Primary Knowledge Sources</h2>
+            <p class="section-lead">Distinct legal, evidentiary, and structural characteristics of the input corpora.</p>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="source-card dailymed">
+            <div>
+              <h4>DailyMed (FDA SPL) <span class="source-tier">Regulatory</span></h4>
+              <p>Official FDA Structured Product Labels in XML format. Filtered to innovator/reference NDAs and BLAs. Ground truth for approved indications, boxed warnings, and contraindications.</p>
+            </div>
+            <div class="source-tags">
+              <span class="tag">LOINC Sections</span>
+              <span class="tag">SET_ID Versioning</span>
+              <span class="tag">Deterministic</span>
+            </div>
+          </div>
+
+          <div class="source-card pubmed">
+            <div>
+              <h4>PubMed Literature <span class="source-tier">Scientific</span></h4>
+              <p>Peer-reviewed MEDLINE abstracts and PMC full-text XML. Ingested via curated cohort PMIDs or targeted MeSH queries. Focuses on empirical Results and Conclusions.</p>
+            </div>
+            <div class="source-tags">
+              <span class="tag">Quotation Grounding</span>
+              <span class="tag">Study Design Scope</span>
+              <span class="tag">PMID Lineage</span>
+            </div>
+          </div>
+
+          <div class="source-card faers">
+            <div>
+              <h4>FAERS Safety Signals <span class="source-tier">Post-Market</span></h4>
+              <p>FDA Adverse Event Reporting System quarterly spontaneous case reports. Modeled strictly as statistical associations (<code>associated_with_adverse_event</code>) with case count qualifiers.</p>
+            </div>
+            <div class="source-tags">
+              <span class="tag">Quarterly FDA</span>
+              <span class="tag">Case Counts</span>
+              <span class="tag">Non-Causal</span>
+            </div>
+          </div>
+
+          <div class="source-card cprd">
+            <div>
+              <h4>CPRD Aurum EHR <span class="source-tier">Real-World RWD</span></h4>
+              <p>Longitudinal UK Primary Care electronic health records. Protected Health Information (PHI) governed strictly offline/ad hoc by Dr. Mehmet Kayaalp. Only approved aggregate profiles enter the pipeline.</p>
+            </div>
+            <div class="source-tags">
+              <span class="tag">Offline Ad-Hoc</span>
+              <span class="tag">Aggregate Profiles</span>
+              <span class="tag">PHI Compliant</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Dual-Graph Topology -->
+      <section id="system-topology" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">04</span> Dual-Graph Topology &amp; Storage Architecture</h2>
+            <p class="section-lead">Harmonizing Property Graphs (Neo4j LPG) and Semantic Web (W3C RDF/SPARQL) over an immutable audit bedrock.</p>
+          </div>
+        </div>
+
+        <div class="diagram-container">
+          <div class="diagram-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            Storage &amp; Serving Topology
+          </div>
+          <div class="diagram-subtitle">How extracted assertions flow from raw inputs into relational audit tables and dual serving projections.</div>
+
+          <!-- Embedded SVG Architecture Diagram -->
+          <svg viewBox="0 0 1000 420" width="100%" height="auto" style="font-family: var(--font-sans); max-height: 420px;">
+            <defs>
+              <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1e3a8a"/>
+                <stop offset="100%" stop-color="#3b82f6"/>
+              </linearGradient>
+              <linearGradient id="grad-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0f766e"/>
+                <stop offset="100%" stop-color="#14b8a6"/>
+              </linearGradient>
+              <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#581c87"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+              <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+              </filter>
+            </defs>
+
+            <!-- Input Tiers -->
+            <g transform="translate(20, 40)">
+              <rect width="180" height="340" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,4"/>
+              <text x="90" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">RAW EVIDENCE SOURCES</text>
+              
+              <rect x="15" y="55" width="150" height="50" rx="6" fill="#ffffff" stroke="#93c5fd" filter="url(#shadow)"/>
+              <text x="90" y="85" text-anchor="middle" font-size="12" font-weight="600" fill="#1e3a8a">DailyMed SPL XML</text>
+              
+              <rect x="15" y="125" width="150" height="50" rx="6" fill="#ffffff" stroke="#86efac" filter="url(#shadow)"/>
+              <text x="90" y="155" text-anchor="middle" font-size="12" font-weight="600" fill="#065f46">PubMed XML / PMCID</text>
+
+              <rect x="15" y="195" width="150" height="50" rx="6" fill="#ffffff" stroke="#fde047" filter="url(#shadow)"/>
+              <text x="90" y="225" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">FAERS Safety Signals</text>
+
+              <rect x="15" y="265" width="150" height="50" rx="6" fill="#ffffff" stroke="#d8b4fe" filter="url(#shadow)"/>
+              <text x="90" y="295" text-anchor="middle" font-size="12" font-weight="600" fill="#581c87">CPRD Aurum (Offline)</text>
+            </g>
+
+            <!-- Arrows to Processing Engine -->
+            <path d="M 205 130 L 250 130" stroke="#94a3b8" stroke-width="2"/>
+            <path d="M 205 200 L 250 200" stroke="#94a3b8" stroke-width="2"/>
+            <path d="M 205 270 L 250 270" stroke="#94a3b8" stroke-width="2"/>
+
+            <!-- Ingestion & Normalization Core -->
+            <g transform="translate(250, 40)">
+              <rect width="260" height="340" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
+              <rect width="260" height="36" rx="8" fill="url(#grad-blue)"/>
+              <text x="130" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">PIPELINE CORE (uv / Python)</text>
+
+              <g transform="translate(15, 55)">
+                <rect width="230" height="50" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+                <text x="115" y="25" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">1. assertion-engine</text>
+                <text x="115" y="40" text-anchor="middle" font-size="10" fill="#3b82f6">pySBD + Gemini/Claude LLM SPO</text>
+              </g>
+
+              <g transform="translate(15, 125)">
+                <rect width="230" height="50" rx="6" fill="#f0fdfa" stroke="#99f6e4"/>
+                <text x="115" y="25" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">2. concept-align</text>
+                <text x="115" y="40" text-anchor="middle" font-size="10" fill="#0d9488">UMLS Tier 0 + RxNav + SapBERT</text>
+              </g>
+
+              <g transform="translate(15, 195)">
+                <rect width="230" height="50" rx="6" fill="#faf5ff" stroke="#e9d5ff"/>
+                <text x="115" y="25" text-anchor="middle" font-size="11" font-weight="700" fill="#6b21a8">3. biolink-bridge</text>
+                <text x="115" y="40" text-anchor="middle" font-size="10" fill="#7c3aed">LinkML 0.8.0 / 23-Col KGX Wire</text>
+              </g>
+
+              <g transform="translate(15, 265)">
+                <rect width="230" height="50" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+                <text x="115" y="25" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">4. quality-guardian</text>
+                <text x="115" y="40" text-anchor="middle" font-size="10" fill="#64748b">Fail-Closed Verification Gates</text>
+              </g>
+            </g>
+
+            <!-- Dual Distribution Branches -->
+            <!-- Branch 1: Audit Bedrock -->
+            <path d="M 515 150 L 565 110" stroke="#94a3b8" stroke-width="2"/>
+            <!-- Branch 2: Graph Serving -->
+            <path d="M 515 250 L 565 290" stroke="#94a3b8" stroke-width="2"/>
+
+            <!-- PostgreSQL Audit Bedrock -->
+            <g transform="translate(570, 40)">
+              <rect width="400" height="150" rx="8" fill="#ffffff" stroke="#0d9488" stroke-width="1.5" filter="url(#shadow)"/>
+              <rect width="400" height="32" rx="8" fill="url(#grad-teal)"/>
+              <text x="200" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">IMMUTABLE AUDIT BEDROCK (PostgreSQL &amp; MinIO)</text>
+              
+              <text x="20" y="60" font-size="11" font-weight="600" fill="#0f172a">• triples: <tspan font-weight="400" fill="#64748b">18,415 clinical SPO assertions with sentence offsets</tspan></text>
+              <text x="20" y="82" font-size="11" font-weight="600" fill="#0f172a">• triple_provenance: <tspan font-weight="400" fill="#64748b">16,293 exact verbatim source sentences</tspan></text>
+              <text x="20" y="104" font-size="11" font-weight="600" fill="#0f172a">• sentence_stage_events: <tspan font-weight="400" fill="#64748b">96,831 extraction &amp; alignment audit records</tspan></text>
+              <text x="20" y="126" font-size="11" font-weight="600" fill="#0f172a">• UMLS Metathesaurus: <tspan font-weight="400" fill="#64748b">105.8M mrsat / 66.2M mrrel concept records</tspan></text>
+            </g>
+
+            <!-- Dual Graph Serving Stores -->
+            <g transform="translate(570, 215)">
+              <rect width="400" height="165" rx="8" fill="#ffffff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+              <rect width="400" height="32" rx="8" fill="url(#grad-purple)"/>
+              <text x="200" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">DUAL SERVING PROJECTIONS</text>
+
+              <!-- Neo4j Box -->
+              <rect x="15" y="48" width="175" height="100" rx="6" fill="#f5f3ff" stroke="#c4b5fd"/>
+              <text x="102" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#581c87">Neo4j (LPG)</text>
+              <text x="102" y="88" text-anchor="middle" font-size="10" fill="#6b21a8">7,094 Nodes / 19,430 Edges</text>
+              <text x="102" y="106" text-anchor="middle" font-size="10" fill="#6b21a8">Multi-hop Cypher Traversals</text>
+              <text x="102" y="124" text-anchor="middle" font-size="10" font-weight="600" fill="#4c1d95">NLQ Console / Insight UI</text>
+
+              <!-- Fuseki RDF Box -->
+              <rect x="210" y="48" width="175" height="100" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+              <text x="297" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a8a">Apache Jena Fuseki (RDF)</text>
+              <text x="297" y="88" text-anchor="middle" font-size="10" fill="#1d4ed8">46,842 Reified Triples</text>
+              <text x="297" y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">W3C OWL 2 Punning</text>
+              <text x="297" y="124" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">K3 RDF / SPARQL Endpoint</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Section 5: Pipeline Stage Workflow (INTERACTIVE STEPPER) -->
+      <section id="pipeline-stages" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">05</span> Interactive Pipeline Stage Workflow</h2>
+            <p class="section-lead">Click any stage below to inspect its subproject contracts, CLI commands, inputs, outputs, and validation gates.</p>
+          </div>
+        </div>
+
+        <!-- 5-Stage Stepper Buttons -->
+        <div class="stage-track">
+          <button class="stage-node-btn active" onclick="switchStage(event, 'stage-1')">
+            <span class="stage-num-badge">Stage 1</span>
+            <span class="stage-node-title">source-nexus</span>
+            <span class="stage-node-sub">Discovery &amp; XML Ingest</span>
+          </button>
+          <button class="stage-node-btn" onclick="switchStage(event, 'stage-2')">
+            <span class="stage-num-badge">Stage 2</span>
+            <span class="stage-node-title">assertion-engine</span>
+            <span class="stage-node-sub">pySBD &amp; LLM SPO Extraction</span>
+          </button>
+          <button class="stage-node-btn" onclick="switchStage(event, 'stage-3')">
+            <span class="stage-num-badge">Stage 3</span>
+            <span class="stage-node-title">concept-align</span>
+            <span class="stage-node-sub">UMLS &amp; RxNav Normalization</span>
+          </button>
+          <button class="stage-node-btn" onclick="switchStage(event, 'stage-4')">
+            <span class="stage-num-badge">Stage 4</span>
+            <span class="stage-node-title">biolink-bridge</span>
+            <span class="stage-node-sub">23-Col KGX &amp; OWL 2 RDF</span>
+          </button>
+          <button class="stage-node-btn" onclick="switchStage(event, 'stage-5')">
+            <span class="stage-num-badge">Stage 5</span>
+            <span class="stage-node-title">serving-layer</span>
+            <span class="stage-node-sub">Neo4j &amp; Jena Fuseki Load</span>
+          </button>
+        </div>
+
+        <!-- Detail Panels for Stages -->
+        <div class="stage-detail-panel">
+
+          <!-- Stage 1 Pane -->
+          <div id="stage-1" class="stage-pane active">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+              <h3 style="color: var(--primary); font-size: 1.15rem;">Stage 1: Discovery &amp; Acquisition (<code>subprojects/source-nexus</code>)</h3>
+              <span class="badge-status status-verified">ACTIVE / PRODUCTION</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Responsible for identifying authoritative drug package inserts, literature abstracts, and safety reports. Converts raw XML files into LOINC-indexed JSON sections while preserving publication metadata and cryptographic checksums.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Inputs &amp; Filtering</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>Raw DailyMed SPL ZIP/XML files (NDAs, BLAs, authorized generics).</li>
+                  <li>Curated cohort PMIDs or targeted MeSH queries.</li>
+                  <li>FDA LOINC codes for Boxed Warning, Indications, Adverse Reactions.</li>
+                </ul>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Outputs &amp; Contracts</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li><code>structured_base/*.json</code> files containing clean LOINC sections.</li>
+                  <li><code>manifest.json</code> with SPL Set IDs, version numbers, and SHA-256 hashes.</li>
+                  <li>Generics and non-innovator SPLs skipped and logged.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-box">
+              <div class="code-header">
+                <span>Execution Command</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code># Transform SPL XML into structured section JSONs
+cd subprojects/source-nexus && uv run python transform_spl.py --input-dir data/spl --output-dir application/kg-data/structured_base</code></pre>
+            </div>
+          </div>
+
+          <!-- Stage 2 Pane -->
+          <div id="stage-2" class="stage-pane">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+              <h3 style="color: var(--primary); font-size: 1.15rem;">Stage 2: Relation Extraction (<code>subprojects/assertion-engine</code>)</h3>
+              <span class="badge-status status-verified">ACTIVE / PRODUCTION</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Applies <code>pySBD</code> biomedical sentence boundary segmentation and drives structured LLM prompting (Gemini/Claude) with strict JSON schemas. Extracts Subject-Predicate-Object assertions alongside conditionality qualifiers and verbatim sentence evidence.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">BioNLP &amp; Extraction Features</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li><code>pySBD</code> generates discrete <code>S1., S2.</code> sentence boundaries.</li>
+                  <li>Fuzzy grounding via <code>rapidfuzz</code> (score &ge; 80%) prevents hallucinations.</li>
+                  <li>Clinical qualifiers extracted: adjunct therapy, population, frequency %.</li>
+                </ul>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Orchestration &amp; Caching</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>Google Gemini Batch API (files:on) with MongoDB concurrency locks.</li>
+                  <li><code>diskcache</code> in <code>application/cache</code> prevents duplicate paid calls.</li>
+                  <li>Direct insertion into PostgreSQL <code>triples</code> and <code>triple_provenance</code>.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-box">
+              <div class="code-header">
+                <span>Execution Command</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code># Run LLM relation extraction for DailyMed with persistent cache and sentence IDs
+./run_pipeline_dailymed_llm.sh</code></pre>
+            </div>
+          </div>
+
+          <!-- Stage 3 Pane -->
+          <div id="stage-3" class="stage-pane">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+              <h3 style="color: var(--primary); font-size: 1.15rem;">Stage 3: Concept Alignment (<code>subprojects/concept-align</code>)</h3>
+              <span class="badge-status status-verified">ACTIVE / PRODUCTION</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Enriches extracted drug and disease text strings with authoritative ontology identifiers across UMLS, RxNorm, MedDRA, SNOMED-CT, MeSH, and MONDO. Resolves pharmacologic classes (EPC, MoA, PE, CS) and ATC codes via RxClass.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">4-Tier Resolution Hierarchy</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li><strong>Tier 0:</strong> PostgreSQL 105.8M-row UMLS Metathesaurus (<code>mrconso</code>).</li>
+                  <li><strong>Tier 1:</strong> Local RxNav-in-a-box for RxCUIs, MED-RT, and ATC classes.</li>
+                  <li><strong>Tier 2:</strong> Cambridge SapBERT dense embedding retrieval (&ge; 0.70).</li>
+                  <li><strong>Tier 3/4:</strong> scispaCy EntityLinker and remote NLM UTS REST API.</li>
+                </ul>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Output &amp; Crosswalks</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>Enriched concept blocks with CURIEs (e.g. <code>RXCUI:1991302</code>, <code>SNOMEDCT:44054006</code>).</li>
+                  <li><code>TUIClassifier</code> maps UMLS TUIs to standard Biolink categories.</li>
+                  <li><code>mondo_enrich.py</code> attaches disease hierarchy identifiers.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-box">
+              <div class="code-header">
+                <span>Execution Command</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code># Normalize Stage 2 triples against local UMLS and RxNav
+cd subprojects/concept-align && uv run python entity_alignment.py --input application/kg-data/relation_extraction/dailymed/output.json</code></pre>
+            </div>
+          </div>
+
+          <!-- Stage 4 Pane -->
+          <div id="stage-4" class="stage-pane">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+              <h3 style="color: var(--primary); font-size: 1.15rem;">Stage 4: Biolink Bridge &amp; Wire Export (<code>subprojects/biolink-bridge</code>)</h3>
+              <span class="badge-status status-verified">ACTIVE / PRODUCTION</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Governed by LinkML 0.8.0 and Biolink Model 4.3.6. Emits the canonical 23-column KGX wire format (<code>nodes.tsv</code>, <code>edges.tsv</code>) alongside canonical W3C OWL 2 RDF artifacts (<code>semantic_graph.nt</code>) with full reification.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">KGX Wire Specifications</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>23 ordered columns with discrete qualifier slots.</li>
+                  <li>Carries <code>has_evidence</code>, <code>sentence_id</code>, and <code>triple_id</code>.</li>
+                  <li>Distinguishes <code>primary_knowledge_source</code> and <code>relation_source</code>.</li>
+                </ul>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">W3C RDF Projection Engine</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>OWL 2 Punning: Drug classes dual-typed as <code>owl:Class</code> &amp; <code>owl:NamedIndividual</code>.</li>
+                  <li>Direct <code>rdfs:subClassOf</code> materialized for all 42 DailyMed hierarchies.</li>
+                  <li>Reified <code>rdf:Statement</code> triples for evidence provenance.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-box">
+              <div class="code-header">
+                <span>Execution Command</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code># Export Biolink-compliant KGX TSVs and W3C N-Triples RDF
+cd subprojects/biolink-bridge && uv run python export_kgx.py --stage 4 --epoch 3</code></pre>
+            </div>
+          </div>
+
+          <!-- Stage 5 Pane -->
+          <div id="stage-5" class="stage-pane">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem;">
+              <h3 style="color: var(--primary); font-size: 1.15rem;">Stage 5: Serving &amp; Verification (<code>subprojects/quality-guardian</code>)</h3>
+              <span class="badge-status status-verified">ACTIVE / PRODUCTION</span>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Executes fail-closed contract validations before promoting artifacts. Simultaneously loads the multi-source serving graph into Neo4j (7,094 nodes, 19,430 edges) and Apache Jena Fuseki RDF for SPARQL federation.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Quality Guardian Gates</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li>Column order, non-empty checksums, and predicate checks.</li>
+                  <li>Quarantines ungrounded or contradictory assertions.</li>
+                  <li>Releases tagged with SHA-256 digests in <code>export_manifest.json</code>.</li>
+                </ul>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-faint);">Serving Endpoints</strong>
+                <ul style="font-size: 0.85rem; margin-top: 0.5rem; margin-left: 1.2rem; color: var(--text-muted);">
+                  <li><strong>Neo4j:</strong> Cypher API for NLQ Console and Insight Studio.</li>
+                  <li><strong>Fuseki:</strong> <code>/rwdkn</code> SPARQL 1.1 endpoint for K3 federation.</li>
+                  <li><strong>PostgreSQL:</strong> Sentence provenance API (<code>:8087</code>).</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-box">
+              <div class="code-header">
+                <span>Verification Command</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code># Run strict fail-closed contract validation across all stages
+uv run python subprojects/quality-guardian/validate_contracts.py --stage 4 --require-profile</code></pre>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Section 6: The Hybrid BioNLP Pipeline -->
+      <section id="nlp-stack" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">06</span> The Hybrid BioNLP &amp; Concept Alignment Engine</h2>
+            <p class="section-lead">Combining classical rule-based BioNLP, biomedical transformer embeddings, and structured LLM extraction.</p>
+          </div>
+        </div>
+
+        <!-- Interactive Tabs for NLP -->
+        <div class="tabs-header">
+          <button class="tab-btn active" onclick="switchTab(event, 'tab-segmentation')">1. pySBD Segmentation</button>
+          <button class="tab-btn" onclick="switchTab(event, 'tab-ner-negation')">2. scispaCy &amp; Negation</button>
+          <button class="tab-btn" onclick="switchTab(event, 'tab-grounding')">3. rapidfuzz Grounding</button>
+          <button class="tab-btn" onclick="switchTab(event, 'tab-tier-norm')">4. Multi-Tiered Normalization</button>
+        </div>
+
+        <!-- Tab 1: pySBD -->
+        <div id="tab-segmentation" class="tab-content active">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Biomedical Sentence Boundary Disambiguation (pySBD)</h4>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Standard NLP tokenizers split sentences on decimal points (e.g. <code>0.5 mg</code>), percentages (<code>1.5%</code>), scientific abbreviations (<code>Dr.</code>, <code>et al.</code>, <code>vs.</code>), or p-values (<code>p&lt;0.001</code>). We employ <strong>pySBD</strong> tuned for biomedical text to partition clinical sections into numbered, verifiable sentence units.
+            </p>
+            <div class="code-box">
+              <div class="code-header">
+                <span>subprojects/assertion-engine/segmentation.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code>import pysbd
+
+# Stateless, clean segmenter initialized once at module load
+_segmenter = pysbd.Segmenter(language="en", clean=True)
+
+def segment_section_text(text: str) -> str:
+    """Return text as newline-joined S1./S2. sentences for discrete LLM boundary extraction."""
+    sentences = [s.strip() for s in _segmenter.segment(text) if s and s.strip()]
+    if len(sentences) <= 1:
+        return text
+    return "\n".join(f"S{i}. {s}" for i, s in enumerate(sentences, 1))</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: NER & Negation -->
+        <div id="tab-ner-negation" class="tab-content">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Biomedical NER (scispaCy) &amp; Clinical Negation (negspacy)</h4>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+              We deploy <code>en_ner_bc5cdr_md</code> (trained on the BioCreative V CDR corpus) to recognize chemical and disease entities in evidence text, coupled with <code>negspacy</code> (<code>en_clinical</code> termset) to prevent negated clinical conditions (e.g., <em>"no signs of pancreatitis"</em>) from being ingested as positive indications.
+            </p>
+            <div class="grid-2">
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="color: var(--primary); font-size: 0.85rem;">scispaCy (en_ner_bc5cdr_md)</strong>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">
+                  Pre-cached in <code>pipeline_cached/</code> to minimize startup overhead during batch processing; extracts specific reaction mentions from unstructured adverse effect tables.
+                </p>
+              </div>
+              <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+                <strong style="color: var(--accent); font-size: 0.85rem;">negspacy (en_clinical)</strong>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">
+                  Identifies clinical negation spans and maps predicates to <code>contraindicated_in</code> or drops false-positive mentions before graph export.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: rapidfuzz Grounding -->
+        <div id="tab-grounding" class="tab-content">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Fuzzy Evidence Grounding &amp; Cryptographic Verification</h4>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Every extracted triple must quote an exact or near-exact substring from the source document. The grounding engine scores candidate evidence against the sentence index using <strong>rapidfuzz</strong> (<code>fuzz.partial_ratio</code>). Quotes scoring below 80% are immediately quarantined.
+            </p>
+            <div class="code-box">
+              <div class="code-header">
+                <span>subprojects/assertion-engine/segmentation.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+              </div>
+<pre><code>from rapidfuzz import fuzz
+
+GROUNDING_THRESHOLD = 80
+
+def is_evidence_grounded(evidence: str, sentence_index: list[str]) -> tuple[bool, float, str]:
+    best_score, best_match = 0.0, None
+    for sent in sentence_index:
+        score = fuzz.partial_ratio(evidence.strip(), sent)
+        if score > best_score:
+            best_score, best_match = score, sent
+            if best_score >= 100:
+                break
+    return best_score >= GROUNDING_THRESHOLD, best_score, best_match</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Multi-Tier Normalization -->
+        <div id="tab-tier-norm" class="tab-content">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">4-Tier Concept Normalization Hierarchy</h4>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Entities are never normalized by open-ended LLM guessing. We use a deterministic, multi-tiered pipeline:
+            </p>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tier</th>
+                    <th>Resolution Engine</th>
+                    <th>Target Vocabularies</th>
+                    <th>Latency &amp; Reliability</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Tier 0</strong></td>
+                    <td><strong>PostgreSQL Metathesaurus</strong> (<code>mrconso</code>)</td>
+                    <td>UMLS CUI, RxCUI, MeSH, SNOMED</td>
+                    <td>&lt; 1 ms (Local DB, 105.8M records, 100% deterministic)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tier 1</strong></td>
+                    <td><strong>Local RxNav-in-a-box</strong> (<code>localhost:4000</code>)</td>
+                    <td>RxNorm, MED-RT, WHO ATC</td>
+                    <td>2 ms (Zero rate limit, resolves EPC, MoA, PE classes)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tier 2</strong></td>
+                    <td><strong>Cambridge SapBERT</strong> (PubMedBERT)</td>
+                    <td>UMLS Concept Synonyms</td>
+                    <td>Transformer embeddings; cosine similarity &ge; 0.70</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tier 3</strong></td>
+                    <td><strong>scispaCy Linkers</strong></td>
+                    <td>UMLS, MeSH, GO, HPO</td>
+                    <td>Local approximate nearest-neighbor linking fallback</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tier 4</strong></td>
+                    <td><strong>NLM UTS REST API</strong></td>
+                    <td>UMLS Metathesaurus</td>
+                    <td>Remote HTTPS fallback for newly minted concept codes</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 7: LLM Governance -->
+      <section id="llm-governance" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">07</span> LLM Orchestration, Caching &amp; Safety Controls</h2>
+            <p class="section-lead">Enterprise rate-limiting, disk caching, and deterministic JSON schemas across cloud providers.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">1. Batch API &amp; Quota Coordination</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              When processing thousands of SPL sections or PubMed abstracts, synchronous API calls risk quota starvation. We use Google Gemini Batch API (<code>GOOGLE_API_BATCH=files:on</code>) chunked into 25-document units.
+            </p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+              Concurrent worker jobs are coordinated across processes using <strong>MongoDB-backed atomic locks</strong> (<code>google_batch_limiter.py</code>), preventing 429 quota exhaustion during distributed execution.
+            </p>
+          </div>
+
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">2. Persisted Disk Caching (diskcache)</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              All LLM prompt/response pairs are stored on disk under <code>application/cache</code> (<code>ASSERTION_LLM_CACHE=on</code>).
+            </p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+              Cache keys are hashed from <code>sha256(prompt + provider + model + temperature)</code>. Rerunning a pipeline on identical data executes at zero API cost with instantaneous retrieval.
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Zero-Hallucination JSON Schema Contract</h4>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+            LLM extractions must adhere to a strict structured schema. Unstructured markdown is disallowed:
+          </p>
+          <div class="code-box">
+            <div class="code-header">
+              <span>TRIPLES_JSON_SCHEMA (Enforced via responseJsonSchema)</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+<pre><code>{
+  "type": "object",
+  "properties": {
+    "triples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subject", "predicate", "object", "evidence", "sentence_id"],
+        "properties": {
+          "subject": {"type": "string"},
+          "predicate": {"type": "string", "enum": ["treats", "has_adverse_event", "contraindicated_in", "interacts_with"]},
+          "object": {"type": "string"},
+          "evidence": {"type": "string", "description": "Exact verbatim quotation from the source text"},
+          "sentence_id": {"type": "string", "description": "S1, S2, etc. corresponding to pySBD sentence index"},
+          "condition_qualifier": {"type": "string", "enum": ["adjunct_to_diet_and_exercise", "monotherapy", "combination_therapy", "none"]},
+          "frequency": {"type": "string", "description": "Normalized percentage string, e.g. 12%"}
+        }
+      }
+    }
+  }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: K3 RDF Integration & Standards -->
+      <section id="k3-rdf-integration" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">08</span> K3 Vendor Integration &amp; Semantic Web (RDF/OWL) Standards</h2>
+            <p class="section-lead">Technical compatibility with the RDF-based KG implemented by K3 at NLM.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Dual-Store Parity &amp; W3C OWL 2 Punning</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Because K3 implemented an RDF-based knowledge graph for NLM, a primary requirement is clean semantic projection without loss of Property Graph richness:
+          </p>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Architectural Feature</th>
+                  <th>Neo4j LPG Implementation</th>
+                  <th>K3 / Apache Jena Fuseki RDF Implementation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Drug Classes</strong></td>
+                  <td>Node labels: <code>:DrugClass:PharmacologicClass</code></td>
+                  <td><strong>W3C OWL 2 Punning</strong>: Entities typed both as <code>owl:Class</code> and <code>owl:NamedIndividual</code>, decorated with <code>schema:DrugClass</code>.</td>
+                </tr>
+                <tr>
+                  <td><strong>Taxonomic Hierarchy</strong></td>
+                  <td>Directed edges: <code>()-[:SUBCLASS_OF]->()</code></td>
+                  <td>Direct <code>rdfs:subClassOf</code> materialized triples (42 DailyMed + 7 PubMed relationships).</td>
+                </tr>
+                <tr>
+                  <td><strong>Edge Qualifiers &amp; Evidence</strong></td>
+                  <td>Native relationship properties: <code>r.has_evidence</code>, <code>r.condition_qualifier</code></td>
+                  <td><strong>Reified Associations</strong>: <code>rdf:Statement</code> / <code>biolink:Association</code> nodes carrying qualifier predicates and provenance URIs.</td>
+                </tr>
+                <tr>
+                  <td><strong>Query Language</strong></td>
+                  <td>Cypher (multi-hop graph patterns)</td>
+                  <td><strong>W3C SPARQL 1.1</strong> (standard Semantic Web federation &amp; reasoning).</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 9: Update Cadence & HITL -->
+      <section id="update-cadence" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">09</span> Update Cadence &amp; Human-in-the-Loop (HITL) Governance</h2>
+            <p class="section-lead">Automated release cycles, quality gates, and subject-matter expert review surfaces.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Update Cadence by Source</h4>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.875rem; color: var(--text-muted);">
+              <li><strong style="color: var(--text-main);">• DailyMed:</strong> Automated batch jobs triggered periodically against FDA SPL monthly archive releases.</li>
+              <li><strong style="color: var(--text-main);">• PubMed:</strong> Incremental runs triggered by new PMIDs matching monitoring bibliographies.</li>
+              <li><strong style="color: var(--text-main);">• FAERS:</strong> Automated quarterly pipelines aligned with FDA AERS/FAERS quarterly data dumps.</li>
+              <li><strong style="color: var(--text-main);">• CPRD Aurum:</strong> Ad hoc / offline governance by Dr. Kayaalp; releases remain in <code>DRAFT</code> until SME approval.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Human-in-the-Loop (HITL) Review Tools</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Extracted assertions are never blindly deployed. Subject Matter Experts review edge cases via specialized web applications:
+            </p>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+              <li><strong>• Triple Audit Explorer (<code>/demo/triples/</code>):</strong> Inspects approved, skipped, and quarantined candidate triples.</li>
+              <li><strong>• Statement Provenance Explorer (<code>/demo/sentences/</code>):</strong> Audits verbatim text spans and confidence scores before promotion.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 10: Audit & Evidence Bedrock -->
+      <section id="audit-provenance" class="doc-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title"><span class="section-num">10</span> Audit &amp; Evidence Bedrock (PostgreSQL &amp; MinIO)</h2>
+            <p class="section-lead">The immutable relational store that powers clinical auditability and zero data loss.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin-bottom: 0.75rem; color: var(--text-main);">Authoritative Relational Evidence Schema</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+            While graph stores (Neo4j and Fuseki) provide fast traversal, the ground-truth clinical evidence bedrock resides permanently in PostgreSQL (<code>lab_db</code>):
+          </p>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Table Name</th>
+                  <th>Verified Record Count</th>
+                  <th>Primary Key &amp; Core Columns</th>
+                  <th>Clinical &amp; Audit Function</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>triples</code></td>
+                  <td><strong>18,415</strong> rows</td>
+                  <td><code>triple_id</code>, <code>subject</code>, <code>predicate</code>, <code>object</code>, <code>sentence_id</code></td>
+                  <td>Master registry of all extracted SPO assertions with LinkML-aligned slot values.</td>
+                </tr>
+                <tr>
+                  <td><code>triple_provenance</code></td>
+                  <td><strong>16,293</strong> rows</td>
+                  <td><code>sentence_id</code>, <code>evidence</code>, <code>source_url</code>, <code>section_id</code></td>
+                  <td>Stores exact verbatim source text and LOINC section boundaries for legal/regulatory audit.</td>
+                </tr>
+                <tr>
+                  <td><code>sentence_stage_events</code></td>
+                  <td><strong>96,831</strong> rows</td>
+                  <td><code>event_id</code>, <code>stage</code>, <code>status</code>, <code>timestamp</code></td>
+                  <td>Chronological audit trail tracking transformation from raw SPL to serving graph.</td>
+                </tr>
+                <tr>
+                  <td><code>mrconso</code> / <code>mrsat</code></td>
+                  <td><strong>105.8M</strong> rows</td>
+                  <td><code>cui</code>, <code>str</code>, <code>sab</code>, <code>tty</code>, <code>code</code></td>
+                  <td>UMLS Metathesaurus local lookup database powering Tier-0 exact normalization.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-main);">Verifiable Provenance Query (PostgreSQL Example)</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Any assertion in the graph can be traced back to its raw sentence in under 1 millisecond using SQL:
+          </p>
+          <div class="code-box">
+            <div class="code-header">
+              <span>SQL Provenance Trace</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+<pre><code>SELECT 
+    t.subject, t.predicate, t.object, 
+    p.evidence AS raw_clinical_sentence, 
+    p.source_url, p.section_id
+FROM triples t
+JOIN triple_provenance p ON t.sentence_id = p.sentence_id
+WHERE t.subject = 'RXCUI:1991302' -- Semaglutide
+LIMIT 5;</code></pre>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Tab Switching for NLP
+    function switchTab(evt, tabId) {
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(tab => tab.classList.remove('active'));
+
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+
+    // Pipeline Stage Stepper Switching
+    function switchStage(evt, stageId) {
+      const stagePanes = document.querySelectorAll('.stage-pane');
+      stagePanes.forEach(pane => pane.classList.remove('active'));
+
+      const stageBtns = document.querySelectorAll('.stage-node-btn');
+      stageBtns.forEach(btn => btn.classList.remove('active'));
+
+      document.getElementById(stageId).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+
+    // Theme Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeLabel = document.getElementById('theme-label');
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', newTheme);
+      themeLabel.textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+    });
+
+    // Copy to Clipboard
+    function copyCode(btn) {
+      const pre = btn.parentElement.nextElementSibling;
+      const text = pre.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = orig; }, 2000);
+      });
+    }
+
+    // Scrollspy for Sidebar
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('section.doc-section');
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(sec => {
+        const top = sec.offsetTop - 120;
+        if (pageYOffset >= top) {
+          current = sec.getAttribute('id');
+        }
+      });
+      navItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.querySelector('a').getAttribute('href') === '#' + current) {
+          item.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
