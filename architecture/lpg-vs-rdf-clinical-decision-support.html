@@ -701,8 +701,8 @@
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Neo4j 5.26 Capabilities Adopted</div>
-          <div class="kpi-value" style="color: var(--accent-blue);">GQL + Dynamic</div>
-          <div class="kpi-sub">Quantified paths <code>-[:SUBCLASS_OF]-&gt;*</code> &amp; dynamic <code>[r:$($rel_types)]</code></div>
+          <div class="kpi-value" style="color: var(--accent-blue);">GQL + Inline</div>
+          <div class="kpi-sub">Quantified paths <code>-[:SUBCLASS_OF]-&gt;*</code> &amp; inline <code>[r WHERE type(r) IN $rel_types]</code></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">RWDKN v1 Defects Remediated</div>
@@ -1260,9 +1260,9 @@ _CLINICAL_OBJECT_LABELS = <span class="str">"|"</span>.join(
 
       <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
         Below is the multi-cohort evidence for <strong>Semaglutide → Nausea</strong> across <strong>CPRD (180-day vs. 360-day longitudinal EHR cohorts)</strong>, <strong>FDA FAERS</strong>, <strong>DailyMed</strong>, and <strong>PubMed</strong>.
-        The absence of native W3C <code>rdfs:subPropertyOf</code> entailment is a genuine semantic distinction between RDF and LPG. However, two aspects of the v1 Neo4j analysis required correction:
+        The absence of native W3C <code>rdfs:subPropertyOf</code> entailment is a genuine semantic distinction between RDF and LPG. However, two aspects of the v1 Neo4j analysis required correction and empirical verification on live <code>neo4j:5.26.28</code>:
         (1) omitting <code>RELATED_TO</code> from <code>_ADVERSE_EVENT_REL_PATTERN</code> was a v1 template defect (now fixed via centralized predicate closure in <code>semantic_query_planner.py</code>), and
-        (2) <strong>current Neo4j 5.26+ CAN dynamically parameterize relationship types and node labels</strong> using <code>MATCH (s)-[r:$($rel_types)]-&gt;(o:$($object_labels))</code>.
+        (2) <strong>Neo4j 5.26+ supports parameterized relationship-type and label filtering</strong>—note that passing a list to <code>[r:$($rel_types)]</code> evaluates as <em>conjunction</em> (<code>&amp;</code>, raising <code>GqlStatus 01N61: unsatisfiable relationship type expression</code> because a relationship has only one type), whereas GQL inline element predicates <code>MATCH (s)-[r WHERE type(r) IN $rel_types]-&gt;(o WHERE any(lbl IN labels(o) WHERE lbl IN $object_labels))</code> (or single-type <code>UNWIND $rel_types AS rt MATCH (s)-[r:$(rt)]-&gt;(o)</code>) provide true <em>disjunctive</em> (<code>OR</code>) parameterized matching.
       </p>
 
       <!-- Real Project Evidence Table: Semaglutide -> Nausea -->
