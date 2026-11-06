@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Graph Paradigms for Clinical Decision Support — LPG (Neo4j) vs. RDF (OWL / SHACL)</title>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: #161f33;
+      --bg-card-alt: #1c2740;
+      --bg-code: #090d16;
+      --border: #283552;
+      --border-subtle: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-indigo: #818cf8;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #fb7185;
+      --accent-purple: #c084fc;
+      --rdf-bg: rgba(52, 211, 153, 0.08);
+      --rdf-border: rgba(52, 211, 153, 0.35);
+      --lpg-bg: rgba(251, 191, 36, 0.08);
+      --lpg-border: rgba(251, 191, 36, 0.35);
+      --danger-bg: rgba(251, 113, 133, 0.1);
+      --danger-border: rgba(251, 113, 133, 0.4);
+      --shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+      --radius: 12px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-card-alt: #f8fafc;
+      --bg-code: #0f172a;
+      --border: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --accent-blue: #0284c7;
+      --accent-indigo: #4f46e5;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      --accent-purple: #7c3aed;
+      --rdf-bg: rgba(5, 150, 105, 0.06);
+      --rdf-border: rgba(5, 150, 105, 0.35);
+      --lpg-bg: rgba(217, 119, 6, 0.06);
+      --lpg-border: rgba(217, 119, 6, 0.35);
+      --danger-bg: rgba(225, 29, 72, 0.06);
+      --danger-border: rgba(225, 29, 72, 0.35);
+      --shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    /* Top Sticky Navigation */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    [data-theme="light"] .topbar {
+      background: rgba(248, 250, 252, 0.9);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      background: var(--bg-card-alt);
+      color: var(--accent-blue);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 5rem;
+    }
+
+    /* Hero Header */
+    .hero {
+      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 55%),
+                  radial-gradient(circle at bottom left, rgba(129, 140, 248, 0.1), transparent 50%),
+                  var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-size: 2.15rem;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.85rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 960px;
+      margin-bottom: 1.75rem;
+    }
+
+    /* KPI Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+    }
+
+    .kpi-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .kpi-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
+    }
+
+    /* Section Styling */
+    section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 4.5rem;
+    }
+
+    .section-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.85rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 980px) {
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-rdf {
+      background: var(--rdf-bg);
+      border: 1px solid var(--rdf-border);
+    }
+
+    .card-lpg {
+      background: var(--lpg-bg);
+      border: 1px solid var(--lpg-border);
+    }
+
+    .card-danger {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Badges & Pills */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+
+    .badge-rdf {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    .badge-lpg {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    .badge-bug {
+      background: rgba(251, 113, 133, 0.18);
+      color: var(--accent-rose);
+      border: 1px solid rgba(251, 113, 133, 0.4);
+    }
+
+    .badge-curie {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge-purple {
+      background: rgba(192, 132, 252, 0.14);
+      color: var(--accent-purple);
+      border: 1px solid rgba(192, 132, 252, 0.35);
+    }
+
+    /* Code Blocks */
+    pre {
+      background: var(--bg-code);
+      color: #e2e8f0;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      margin: 0.75rem 0;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.84em;
+      background: rgba(148, 163, 184, 0.14);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    .kw { color: #38bdf8; font-weight: 600; }
+    .str { color: #34d399; }
+    .cmt { color: #64748b; font-style: italic; }
+    .num { color: #fbbf24; }
+    .err { color: #fb7185; font-weight: 700; }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-card);
+      margin: 1rem 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.86rem;
+    }
+
+    th {
+      background: var(--bg-card-alt);
+      color: var(--text-primary);
+      font-weight: 700;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.03);
+    }
+
+    /* Interactive Diagram Tabs & Canvas */
+    .diagram-shell {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow);
+    }
+
+    .diagram-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tab-group {
+      display: inline-flex;
+      background: var(--bg-primary);
+      padding: 0.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      gap: 0.25rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      padding: 0.5rem 0.95rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-blue);
+      color: #0b0f19;
+      font-weight: 700;
+    }
+
+    .sim-toggle-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--bg-primary);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .sim-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .sim-btn.active-rdf {
+      background: var(--accent-emerald);
+      color: #06281e;
+    }
+
+    .sim-btn.active-lpg {
+      background: var(--accent-rose);
+      color: #2c0610;
+    }
+
+    .svg-container {
+      width: 100%;
+      overflow-x: auto;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .svg-container svg {
+      max-width: 100%;
+      height: auto;
+      font-family: var(--font-sans);
+    }
+
+    /* Interactive SVG Node States */
+    .neo4j-dropped {
+      transition: opacity 0.3s ease, filter 0.3s ease;
+    }
+
+    .mode-neo4j .neo4j-dropped {
+      opacity: 0.22;
+      filter: grayscale(90%);
+    }
+
+    .mode-rdf .neo4j-error-banner {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mode-neo4j .neo4j-error-banner {
+      opacity: 1;
+    }
+
+    .neo4j-error-banner {
+      transition: opacity 0.25s ease;
+    }
+
+    /* LOC Bar Comparison */
+    .loc-row {
+      margin-bottom: 1rem;
+    }
+
+    .loc-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+
+    .loc-bar-track {
+      width: 100%;
+      height: 26px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .loc-seg {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #0b0f19;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Callouts */
+    .callout {
+      border-left: 4px solid var(--accent-blue);
+      background: var(--bg-card-alt);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .callout-warn {
+      border-left-color: var(--accent-rose);
+      background: var(--danger-bg);
+    }
+
+    .callout-success {
+      border-left-color: var(--accent-emerald);
+      background: var(--rdf-bg);
+    }
+
+    ul.styled-list {
+      padding-left: 1.25rem;
+      color: var(--text-secondary);
+    }
+
+    ul.styled-list li {
+      margin-bottom: 0.45rem;
+    }
+
+    @media print {
+      .topbar, .sim-toggle-group, .tab-group {
+        display: none !important;
+      }
+      body {
+        background: #fff;
+        color: #000;
+      }
+      .card, .hero, .diagram-shell {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="topbar">
+    <a href="#top" class="brand">
+      <span class="brand-badge">RWDKN KG Audit</span>
+      <span>Clinical Decision Support: LPG (Neo4j) vs. RDF (OWL 2 / SHACL)</span>
+    </a>
+    <div class="nav-links">
+      <a href="#brief">1. Architectural Brief</a>
+      <a href="#hierarchy-drug">2. 4-Layer Drug Hierarchy</a>
+      <a href="#hierarchy-inference">3. Parent-Child Taxonomies</a>
+      <a href="#causal-predicates">4. Causal &amp; Predicate Tree</a>
+      <a href="#regimen-shacl">5. Clinical Rules &amp; Regimens</a>
+      <a href="#footprint">6. Engineering Footprint</a>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="toggleTheme()" id="themeBtn">☀️ Light Mode</button>
+      <button class="btn" onclick="window.print()">🖨️ Print / PDF</button>
+    </div>
+  </nav>
+
+  <div class="container" id="top">
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-eyebrow">Empirical Architecture Substantiation • NLM / RWDKN Knowledge Graph (v2 Post-Remediation)</div>
+      <h1>Knowledge Graph Paradigms for Clinical Decision Support:<br/>Intrinsic Semantic Reasoning (RDF/OWL/SHACL) vs. Modernized Cypher (Neo4j 5.26 LPG)</h1>
+      <p class="hero-subtitle">
+        An architectural and empirical evaluation comparing <strong>Labeled Property Graphs (LPG / Neo4j 5.26)</strong> and the <strong>Resource Description Framework (RDF / Apache Jena Fuseki / OWL 2 / SHACL)</strong> using production artifacts from the <strong>RWDKN GLP-1 Knowledge Graph Pipeline</strong>. This revision incorporates peer-review findings to rigorously separate <strong>(1) Intrinsic W3C Semantic Advantages</strong>, <strong>(2) Modern Neo4j 5.26 Capabilities</strong>, and <strong>(3) Remediated RWDKN v1 Implementation Defects</strong>.
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Dual-Graph Corpus (5 Sources)</div>
+          <div class="kpi-value">644,697</div>
+          <div class="kpi-sub">RDF N-Triples vs. 7,662 LPG Nodes &amp; 19,747 Edges</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Like-for-Like Core Graph Layer</div>
+          <div class="kpi-value" style="color: var(--accent-emerald);">766 vs. 2,340 LOC</div>
+          <div class="kpi-sub">RDF Projection/SHACL (766) vs. Neo4j Loader/Planner/Templates (2,340)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Neo4j 5.26 Capabilities Adopted</div>
+          <div class="kpi-value" style="color: var(--accent-blue);">GQL + Dynamic</div>
+          <div class="kpi-sub">Quantified paths <code>-[:SUBCLASS_OF]-&gt;*</code> &amp; dynamic <code>[r:$($rel_types)]</code></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">RWDKN v1 Defects Remediated</div>
+          <div class="kpi-value" style="color: var(--accent-amber);">8 / 8 Fixed</div>
+          <div class="kpi-sub">Canonical typing, centralized closures, mandatory <code>MATCH</code> &amp; parity tests</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: ARCHITECTURAL BRIEF & 3-TIER TAXONOMY -->
+    <section id="brief">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 01 // Executive Paradigm Comparison &amp; 3-Tier Classification</span>
+          <h2 class="section-title">Architectural Brief: Distinguishing Intrinsic Paradigm Differences from Implementation Choices</h2>
+        </div>
+        <span class="badge badge-curie">Biolink Model v4.3.6 + Neo4j 5.26.28 CE</span>
+      </div>
+
+      <div class="grid-3" style="margin-bottom: 1.5rem;">
+        <div class="card card-rdf">
+          <h3><span class="badge badge-rdf">Tier 1</span> Intrinsic Semantic Advantages (RDF / OWL / SHACL)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Capabilities formally guaranteed by W3C specifications where domain semantics are declared once in the ontology/shapes rather than reconstructed by application code:
+          </p>
+          <ul class="styled-list" style="font-size: 0.86rem;">
+            <li><strong>Formal Transitive Subsumption (RDFS/OWL):</strong> W3C RDFS formally defines <code>rdfs:subClassOf</code> and <code>rdfs:subPropertyOf</code> as transitive; instances of a subclass or sub-property are automatically entailed as instances of their superclasses/super-properties.</li>
+            <li><strong>Portable Closed-World Shapes &amp; Rules (SHACL):</strong> Declarative <code>sh:NodeShape</code> constraints and <code>sh:TripleRule</code> inferences (e.g., inferring <code>rwdkn:isMonotherapy</code>) execute before graph ingestion.</li>
+            <li><strong>Global IRIs &amp; W3C PROV-O:</strong> Native semantic alignment across <code>RXCUI:</code>, <code>SNOMEDCT:</code>, <code>MESH:</code>, <code>MED-RT:</code>, <code>ATC:</code>, and <code>MTHSPL:</code>.</li>
+          </ul>
+        </div>
+
+        <div class="card card-lpg">
+          <h3><span class="badge badge-lpg">Tier 2</span> Modern Neo4j 5.26 Capabilities (Now Adopted)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Database and Cypher capabilities supported by our deployed <code>neo4j:5.26.28</code> engine that were underutilized in v1 and have now been adopted across the codebase:
+          </p>
+          <ul class="styled-list" style="font-size: 0.86rem;">
+            <li><strong>GQL-Conformant Quantified Relationships:</strong> Replaced artificial 1-hop bounds (<code>[:SUBCLASS_OF*0..1]</code>) with arbitrary-depth quantified path patterns (<code>-[:SUBCLASS_OF]-&gt;*</code> and <code>-[:SUBCLASS_OF]-&gt;+</code>).</li>
+            <li><strong>Dynamic Node Labels &amp; Relationship Types:</strong> Cypher 5.26+ supports dynamic type/label expressions (<code>MATCH (s)-[r:$($rel_types)]-&gt;(o:$($object_labels))</code>) populated from a single centralized semantic planner.</li>
+            <li><strong>Native Uniqueness Constraints:</strong> Enforces 5 native <code>IS UNIQUE</code> constraints in Neo4j 5.26 Community Edition (while noting property existence/type &amp; Graph Types require Enterprise Edition).</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3><span class="badge badge-purple">Tier 3</span> RWDKN v1 Pipeline Defects (Remediated in Codebase)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Shortcomings traced to specific v1 pipeline and query-template implementation choices rather than Neo4j or the LPG paradigm itself—all fixed and regression-tested:
+          </p>
+          <ul class="styled-list" style="font-size: 0.86rem;">
+            <li><strong>Order-Independent Canonical Typing:</strong> Replaced first-seen-wins deduplication in <code>export_kgx.py</code> with <code>reconcile_node_records()</code> and ancestor label expansion.</li>
+            <li><strong>Centralized Biolink Hierarchy:</strong> Moved class and predicate closures out of individual Cypher templates into <code>semantic_query_planner.py</code> (including <code>RELATED_TO</code>).</li>
+            <li><strong>Mandatory <code>MATCH</code> in Regimen Loader:</strong> Replaced historical <code>OPTIONAL MATCH</code> with mandatory <code>MATCH</code>-before-<code>MERGE</code> and post-load connectivity assertions.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Production Artifact Inventory Table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data Source Cohort</th>
+              <th>Primary Clinical Domain</th>
+              <th>LPG Nodes (<code>nodes.tsv</code>)</th>
+              <th>LPG Edges (<code>edges.tsv</code>)</th>
+              <th>RDF Triples (<code>semantic_graph.nt</code>)</th>
+              <th>Rejected Triples Caught by Gate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>DailyMed (SPL Labels)</strong></td>
+              <td>FDA Drug Labels, Boxed Warnings, Indications, Regimens (CQ-5)</td>
+              <td><code>263</code></td>
+              <td><code>1,864</code> (+ <code>19</code> Regimens)</td>
+              <td><code>44,906</code></td>
+              <td><span class="badge badge-bug">31 rejected</span></td>
+            </tr>
+            <tr>
+              <td><strong>PubMed Literature</strong></td>
+              <td>Peer-reviewed GLP-1 clinical abstracts &amp; comparative evidence</td>
+              <td><code>905</code></td>
+              <td><code>3,155</code></td>
+              <td><code>90,715</code></td>
+              <td><span class="badge badge-bug">631 rejected</span></td>
+            </tr>
+            <tr>
+              <td><strong>FDA FAERS</strong></td>
+              <td>Post-market spontaneous adverse event pharmacovigilance (2018Q1–2026Q1)</td>
+              <td><code>6,000</code></td>
+              <td><code>12,880</code></td>
+              <td><code>453,160</code></td>
+              <td><span class="badge badge-bug">9 rejected</span></td>
+            </tr>
+            <tr>
+              <td><strong>CPRD Aurum (EHR)</strong></td>
+              <td>Longitudinal time-windowed cohort Odds Ratios (180d vs. 360d follow-up)</td>
+              <td><code>251</code></td>
+              <td><code>944</code></td>
+              <td><code>28,590</code></td>
+              <td><code>0</code></td>
+            </tr>
+            <tr>
+              <td><strong>Clinical Findings</strong></td>
+              <td>Curated clinical study endpoints &amp; comparative outcomes</td>
+              <td><code>243</code></td>
+              <td><code>904</code></td>
+              <td><code>27,326</code></td>
+              <td><code>0</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 2: THE 4-LAYER DRUG HIERARCHY & SEMAGLUTIDE MYSTERY -->
+    <section id="hierarchy-drug">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 02 // Point #1: Ontological Subsumption Direction vs. KGX-to-Neo4j Projection</span>
+          <h2 class="section-title">Why Semaglutide (<code>RXCUI:1991302</code>) Was Typed as <code>biolink:ChemicalEntity</code> &amp; How Canonical Reconciliation Fixes It</h2>
+        </div>
+        <span class="badge badge-rdf">RDFS Subsumption Direction + Remediated export_kgx.py</span>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        A central question raised during review is why <code>RXCUI:1991302</code> (Semaglutide) and <code>RXCUI:475968</code> (Liraglutide) appeared in v1 <code>nodes.tsv</code> only as <code>biolink:ChemicalEntity</code> while sibling GLP-1 drugs <code>RXCUI:2601723</code> (Tirzepatide) and <code>RXCUI:1551291</code> (Dulaglutide) received <code>biolink:Drug</code> in DailyMed and <code>biolink:ChemicalEntity</code> in PubMed. Evaluating this requires separating <strong>(a) the formal direction of W3C RDFS class subsumption</strong> from <strong>(b) the v1 KGX node deduplication policy in <code>export_kgx.py</code></strong>.
+      </p>
+
+      <!-- DIAGRAM 1: 4-LAYER DRUG HIERARCHY & BIOLINK SUBCLASS TREE -->
+      <div class="diagram-shell">
+        <div class="diagram-toolbar">
+          <div>
+            <strong style="font-size: 1rem;">Hierarchical Diagram 1: The 4-Layer NLM/FDA Drug Architecture &amp; Biolink Class Inheritance</strong>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">Parent-child relationship from Marketed SPL Package → Formulated Drug → Active Moiety Peptide → 4 Pharmacologic Class Axes</div>
+          </div>
+          <span class="badge badge-curie">Real Data: dailymed/nodes.tsv &amp; edges.tsv</span>
+        </div>
+
+        <div class="svg-container">
+          <svg viewBox="0 0 1180 560" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8"/>
+              </marker>
+              <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399"/>
+              </marker>
+              <marker id="arrow-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#c084fc"/>
+              </marker>
+              <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#fbbf24"/>
+              </marker>
+            </defs>
+
+            <!-- Left Column: Biolink Ontology Class Hierarchy (TBox) -->
+            <rect x="20" y="20" width="310" height="520" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="40" y="50" fill="#34d399" font-size="13" font-weight="800" letter-spacing="0.06em">BIOLINK ONTOLOGY HIERARCHY (OWL)</text>
+            <text x="40" y="70" fill="#94a3b8" font-size="11">Parent-Child Class Tree (biolink-model-4.3.6)</text>
+
+            <!-- Ontology Nodes -->
+            <rect x="55" y="95" width="240" height="46" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="175" y="116" fill="#f1f5f9" font-size="12" font-weight="700" text-anchor="middle">biolink:NamedThing</text>
+            <text x="175" y="132" fill="#94a3b8" font-size="10" text-anchor="middle">Root Entity Class</text>
+
+            <line x1="175" y1="180" x2="175" y2="143" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="235" y="166" fill="#34d399" font-size="10" font-family="monospace">rdfs:subClassOf</text>
+
+            <rect x="45" y="182" width="260" height="60" rx="8" fill="rgba(52, 211, 153, 0.12)" stroke="#34d399" stroke-width="2"/>
+            <text x="175" y="203" fill="#34d399" font-size="13" font-weight="800" text-anchor="middle">biolink:ChemicalEntity</text>
+            <text x="175" y="220" fill="#cbd5e1" font-size="10.5" text-anchor="middle">Physical Molecule / Active Moiety Peptide</text>
+            <text x="175" y="234" fill="#94a3b8" font-size="10" text-anchor="middle">(UMLS: "Amino Acid, Peptide, or Protein")</text>
+
+            <line x1="175" y1="282" x2="175" y2="244" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="235" y="268" fill="#34d399" font-size="10" font-family="monospace">rdfs:subClassOf</text>
+
+            <rect x="55" y="284" width="240" height="46" rx="8" fill="#161f33" stroke="#64748b" stroke-width="1.5"/>
+            <text x="175" y="305" fill="#e2e8f0" font-size="12" font-weight="700" text-anchor="middle">biolink:MolecularMixture</text>
+            <text x="175" y="321" fill="#94a3b8" font-size="10" text-anchor="middle">is_a: ChemicalMixture</text>
+
+            <line x1="175" y1="370" x2="175" y2="332" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="235" y="356" fill="#34d399" font-size="10" font-family="monospace">rdfs:subClassOf</text>
+
+            <rect x="45" y="372" width="260" height="58" rx="8" fill="rgba(251, 191, 36, 0.12)" stroke="#fbbf24" stroke-width="2"/>
+            <text x="175" y="393" fill="#fbbf24" font-size="13" font-weight="800" text-anchor="middle">biolink:Drug</text>
+            <text x="175" y="410" fill="#cbd5e1" font-size="10.5" text-anchor="middle">Clinical / Pharmacologic Role</text>
+            <text x="175" y="424" fill="#fbbf24" font-size="10" text-anchor="middle">Every Drug IS A ChemicalEntity in OWL!</text>
+
+            <rect x="40" y="448" width="270" height="75" rx="8" fill="rgba(251, 113, 133, 0.12)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="175" y="468" fill="#fb7185" font-size="11.5" font-weight="800" text-anchor="middle">⚠️ WHY NEO4J (LPG) BREAKS HERE:</text>
+            <text x="175" y="486" fill="#e2e8f0" font-size="10.5" text-anchor="middle">Neo4j treats :Drug and :ChemicalEntity</text>
+            <text x="175" y="501" fill="#e2e8f0" font-size="10.5" text-anchor="middle">as unrelated strings. MATCH (d:Drug)</text>
+            <text x="175" y="516" fill="#fb7185" font-size="10.5" font-weight="700" text-anchor="middle">completely misses Semaglutide!</text>
+
+            <!-- Right Column: 4-Layer NLM/FDA Instance Hierarchy (ABox) -->
+            <rect x="350" y="20" width="810" height="520" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="375" y="50" fill="#38bdf8" font-size="13" font-weight="800" letter-spacing="0.06em">4-LAYER NLM / FDA INSTANCE HIERARCHY IN RWDKN KG</text>
+            <text x="375" y="70" fill="#94a3b8" font-size="11">How DailyMed SPL Labels connect to Active Moiety RXCUIs and Multi-Axial Drug Classes</text>
+
+            <!-- Layer 4: Pharmacologic Classes (Top of right side) -->
+            <text x="375" y="100" fill="#c084fc" font-size="11" font-weight="700">LAYER 4: PHARMACOLOGIC DRUG CLASSES (biolink:DrugClass / PharmacologicClass)</text>
+
+            <rect x="375" y="110" width="180" height="58" rx="8" fill="#161f33" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="465" y="129" fill="#c084fc" font-size="11" font-weight="700" text-anchor="middle">MED-RT:N0000178480</text>
+            <text x="465" y="145" fill="#f1f5f9" font-size="10.5" text-anchor="middle">GLP-1 Receptor Agonist</text>
+            <text x="465" y="160" fill="#94a3b8" font-size="9.5" text-anchor="middle">Axis: EPC (Established Class)</text>
+
+            <rect x="570" y="110" width="180" height="58" rx="8" fill="#161f33" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="660" y="129" fill="#c084fc" font-size="11" font-weight="700" text-anchor="middle">MED-RT:N0000020058</text>
+            <text x="660" y="145" fill="#f1f5f9" font-size="10.5" text-anchor="middle">GLP-1R Agonists [MoA]</text>
+            <text x="660" y="160" fill="#94a3b8" font-size="9.5" text-anchor="middle">Axis: Mechanism of Action</text>
+
+            <rect x="765" y="110" width="180" height="58" rx="8" fill="#161f33" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="855" y="129" fill="#c084fc" font-size="11" font-weight="700" text-anchor="middle">ATC:A10BJ</text>
+            <text x="855" y="145" fill="#f1f5f9" font-size="10.5" text-anchor="middle">GLP-1 Analogues</text>
+            <text x="855" y="160" fill="#94a3b8" font-size="9.5" text-anchor="middle">Axis: WHO ATC Level 4</text>
+
+            <rect x="960" y="110" width="180" height="58" rx="8" fill="#161f33" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="1050" y="129" fill="#c084fc" font-size="11" font-weight="700" text-anchor="middle">MESH:M0160181</text>
+            <text x="1050" y="145" fill="#f1f5f9" font-size="10.5" text-anchor="middle">Glucagon-Like Peptide 1</text>
+            <text x="1050" y="160" fill="#94a3b8" font-size="9.5" text-anchor="middle">Axis: Chemical Structure (CS)</text>
+
+            <!-- Layer 2/3: Active Moiety & Ingredient Node (Center) -->
+            <text x="375" y="232" fill="#34d399" font-size="11" font-weight="700">LAYER 2 &amp; 3: CANONICAL ACTIVE MOIETY / INGREDIENT NODE (RxNorm IN / FDA UNII)</text>
+
+            <rect x="490" y="245" width="540" height="92" rx="10" fill="rgba(52, 211, 153, 0.12)" stroke="#34d399" stroke-width="2.5"/>
+            <text x="760" y="270" fill="#34d399" font-size="14" font-weight="800" text-anchor="middle">RXCUI:1991302 — Semaglutide (Active Moiety)</text>
+            <text x="760" y="290" fill="#f1f5f9" font-size="11.5" font-family="monospace" text-anchor="middle">UNII:53AXN4NNHX | UMLS CUI:C4543910 | RxNorm TTY: IN (Ingredient)</text>
+            <text x="760" y="309" fill="#fbbf24" font-size="11" font-weight="700" text-anchor="middle">Stored in dailymed/nodes.tsv as category = "biolink:ChemicalEntity" (node_type = "")</text>
+            <text x="760" y="326" fill="#cbd5e1" font-size="10.5" text-anchor="middle">Connected to 164 clinical edges (Adverse Events, Indications, Boxed Warnings, Cohort ORs)</text>
+
+            <!-- Arrows from Semaglutide up to 4 DrugClasses -->
+            <path d="M 620 245 L 465 172" stroke="#c084fc" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+            <path d="M 710 245 L 660 172" stroke="#c084fc" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+            <path d="M 810 245 L 855 172" stroke="#c084fc" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+            <path d="M 900 245 L 1050 172" stroke="#c084fc" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+            <text x="760" y="205" fill="#c084fc" font-size="10.5" font-family="monospace" font-weight="700" text-anchor="middle">biolink:subclass_of / rdfs:subClassOf</text>
+
+            <!-- Layer 1: DailyMed Drug Labels (Bottom of right side) -->
+            <text x="375" y="395" fill="#38bdf8" font-size="11" font-weight="700">LAYER 1: MARKETED FDA SPL PRODUCT LABELS (biolink:DrugLabel / biolink:InformationContentEntity)</text>
+
+            <!-- Ozempic -->
+            <rect x="375" y="410" width="240" height="96" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="495" y="432" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">Ozempic (Injectable Pen)</text>
+            <text x="495" y="450" fill="#f1f5f9" font-size="10" font-family="monospace" text-anchor="middle">MTHSPL:adec4fd2-6858-4c99...</text>
+            <text x="495" y="466" fill="#cbd5e1" font-size="10" text-anchor="middle">Application: NDA209637 | NDC: 0169-4136</text>
+            <text x="495" y="482" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle">Indication: Type 2 Diabetes (T2DM)</text>
+            <text x="495" y="497" fill="#94a3b8" font-size="9.5" text-anchor="middle">category: biolink:InformationContentEntity</text>
+
+            <!-- Wegovy -->
+            <rect x="635" y="410" width="240" height="96" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="755" y="432" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">Wegovy (2.4mg Auto-Injector)</text>
+            <text x="755" y="450" fill="#f1f5f9" font-size="10" font-family="monospace" text-anchor="middle">MTHSPL:ee06186f-2aa3-4990...</text>
+            <text x="755" y="466" fill="#cbd5e1" font-size="10" text-anchor="middle">Application: NDA215256 | NDC: 0169-4524</text>
+            <text x="755" y="482" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle">Indication: Obesity / Weight Mgmt</text>
+            <text x="755" y="497" fill="#94a3b8" font-size="9.5" text-anchor="middle">category: biolink:InformationContentEntity</text>
+
+            <!-- Rybelsus -->
+            <rect x="895" y="410" width="245" height="96" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="1017" y="432" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">Rybelsus (Oral Tablet + SNAC)</text>
+            <text x="1017" y="450" fill="#f1f5f9" font-size="10" font-family="monospace" text-anchor="middle">MTHSPL:27f15fac-7d98-4114...</text>
+            <text x="1017" y="466" fill="#cbd5e1" font-size="10" text-anchor="middle">Application: NDA213051 | Oral 7/14mg</text>
+            <text x="1017" y="482" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle">Indication: Type 2 Diabetes (T2DM)</text>
+            <text x="1017" y="497" fill="#94a3b8" font-size="9.5" text-anchor="middle">category: biolink:InformationContentEntity</text>
+
+            <!-- Arrows from SPL Labels to Active Moiety -->
+            <path d="M 495 410 L 660 340" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+            <path d="M 755 410 L 755 340" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+            <path d="M 1017 410 L 850 340" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+            <text x="755" y="376" fill="#38bdf8" font-size="10.5" font-family="monospace" font-weight="700" text-anchor="middle">biolink:has_active_ingredient / mentioned_in_spl</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Empirical Evidence Table for GLP-1 Drugs in nodes.tsv -->
+      <div class="grid-2">
+        <div>
+          <h3 style="margin-bottom: 0.5rem;">v1 First-Seen-Wins Projection Defect vs. v2 Canonical Reconciliation</h3>
+          <p style="font-size: 0.86rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            In v1, UMLS typed GLP-1 peptides as <code>"Amino Acid, Peptide, or Protein"</code> (mapping to <code>biolink:ChemicalEntity</code>) and <code>export_kgx.py</code> used <strong>first-seen-wins node deduplication</strong>. This was an <strong>integration/projection defect</strong>—not an intrinsic Neo4j limitation—and has now been remediated via deterministic canonical typing and ancestor label expansion:
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>CURIE &amp; Name</th>
+                  <th>v1 <code>nodes.tsv</code> (First-Seen-Wins)</th>
+                  <th>v2 Remediated Category (<code>reconcile_node_records</code>)</th>
+                  <th>v2 Neo4j Labels (with Ancestor Closure)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>RXCUI:1991302</code><br/><strong>semaglutide</strong></td>
+                  <td><span class="badge badge-bug">biolink:ChemicalEntity only</span></td>
+                  <td><span class="badge badge-rdf">biolink:Drug</span><br/><small><code>node_type="Drug"</code></small></td>
+                  <td><code>:KGXNode:Drug:MolecularMixture:ChemicalMixture:ChemicalEntity:NamedThing</code></td>
+                </tr>
+                <tr>
+                  <td><code>RXCUI:475968</code><br/><strong>liraglutide</strong></td>
+                  <td><span class="badge badge-bug">biolink:ChemicalEntity only</span></td>
+                  <td><span class="badge badge-rdf">biolink:Drug</span><br/><small><code>node_type="Drug"</code></small></td>
+                  <td><code>:KGXNode:Drug:MolecularMixture:ChemicalMixture:ChemicalEntity:NamedThing</code></td>
+                </tr>
+                <tr>
+                  <td><code>RXCUI:2601723</code><br/><strong>tirzepatide</strong></td>
+                  <td><span class="badge badge-lpg">Drug (DailyMed) / ChemicalEntity (PubMed)</span></td>
+                  <td><span class="badge badge-rdf">biolink:Drug</span><br/><small>(Order-Independent)</small></td>
+                  <td><code>:KGXNode:Drug:MolecularMixture:ChemicalMixture:ChemicalEntity:NamedThing</code></td>
+                </tr>
+                <tr>
+                  <td><code>RXCUI:1551291</code><br/><strong>dulaglutide</strong></td>
+                  <td><span class="badge badge-lpg">Drug (DailyMed) / ChemicalEntity (PubMed)</span></td>
+                  <td><span class="badge badge-rdf">biolink:Drug</span><br/><small>(Order-Independent)</small></td>
+                  <td><code>:KGXNode:Drug:MolecularMixture:ChemicalMixture:ChemicalEntity:NamedThing</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="margin-bottom: 0.5rem;">Formal Subsumption Direction &amp; Codebase Remediation</h3>
+          <div class="card card-rdf" style="margin-bottom: 0.85rem; padding: 1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="color: var(--accent-emerald);">Formal RDFS Subsumption Direction (Point #1)</strong>
+              <span class="badge badge-rdf">rwdkn-model.owl.nt</span>
+            </div>
+            <pre><code><span class="cmt"># W3C RDFS: If C rdfs:subClassOf C', every instance of C is an instance of C'.</span>
+biolink:Drug <span class="kw">rdfs:subClassOf</span> biolink:MolecularMixture .
+biolink:MolecularMixture <span class="kw">rdfs:subClassOf</span> biolink:ChemicalEntity .
+
+<span class="cmt"># IMPORTANT DIRECTIONALITY:</span>
+<span class="cmt"># Drug → ChemicalEntity holds, but ChemicalEntity ↛ Drug!</span>
+<span class="cmt"># If an entity is typed ONLY as ChemicalEntity upstream, OWL/RDFS</span>
+<span class="cmt"># subclass reasoning alone cannot infer downwards that it is a Drug.</span></code></pre>
+          </div>
+
+          <div class="card card-lpg" style="padding: 1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="color: var(--accent-amber);">Remediated in <code>export_kgx.py</code> &amp; <code>load_kgx_to_neo4j.py</code></strong>
+              <span class="badge badge-lpg">Order-Independent Fix</span>
+            </div>
+            <pre><code><span class="cmt"># 1. export_kgx.py — Canonical RxNorm Drug promotion + reconciliation:</span>
+<span class="kw">if</span> is_drug <span class="kw">and not</span> is_drug_class <span class="kw">and</span> node_id.startswith(<span class="str">"RXCUI:"</span>):
+    category = <span class="str">"biolink:Drug"</span>
+nodes[subj_id] = reconcile_node_records(nodes[subj_id], subj_node)
+
+<span class="cmt"># 2. load_kgx_to_neo4j.py — Optional ancestor label materialization:</span>
+labels = derive_labels(row, include_ancestors=<span class="num">True</span>)</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: PARENT-CHILD TAXONOMIC & ABSTRACT CLASS REASONING -->
+    <section id="hierarchy-inference">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 03 // Points #2, #3 &amp; #5: Multi-Hop Taxonomies &amp; Centralized Class Expansion</span>
+          <h2 class="section-title">Interactive Hierarchy Explorer: Native RDFS Entailment vs. Quantified Cypher Paths</h2>
+        </div>
+        <span class="badge badge-curie">-[:SUBCLASS_OF]-&gt;* + Centralized Biolink Closure</span>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        In v1, two implementation choices in <code>cypher_templates.py</code> caused brittleness and recall loss:
+        (1) an artificial 1-hop bound <code>[:SUBCLASS_OF*0..1]</code> that omitted 2-hop drug <strong>Xultophy (<code>RXCUI:1727493</code>)</strong>, and
+        (2) hardcoded child label pipes <code>Disease|ClinicalFinding|Phenotype|PhenotypicFeature</code> inside individual templates.
+        While <strong>W3C RDFS natively defines <code>rdfs:subClassOf</code> as transitive</strong> (an intrinsic RDF advantage), Neo4j 5.26 supports <strong>GQL-conformant quantified relationships (<code>-[:SUBCLASS_OF]-&gt;*</code> / <code>-[:SUBCLASS_OF]-&gt;+</code>)</strong> and centralized class-closure expansion in <code>semantic_query_planner.py</code>.
+      </p>
+
+      <!-- DIAGRAM 2: INTERACTIVE TAXONOMIC & CLASS INFERENCE SIMULATOR -->
+      <div class="diagram-shell mode-rdf" id="simDiagram2">
+        <div class="diagram-toolbar">
+          <div>
+            <strong style="font-size: 1rem;">Hierarchical Diagram 2: Parent-Child Ontology Reasoning &amp; Multi-Hop Taxonomic Chains</strong>
+            <div style="font-size: 0.82rem; color: var(--text-muted);" id="simStatusText">
+              ✅ Currently viewing: <strong>RDF / OWL + SHACL Engine</strong> — Full transitive closure (193 outcome nodes &amp; all 4 GLP-1 drugs retrieved)
+            </div>
+          </div>
+          <div class="sim-toggle-group">
+            <button class="sim-btn active-rdf" id="btnRdfSim" onclick="setSimMode('rdf')">🟢 RDF Reasoner (rdfs:subClassOf+)</button>
+            <button class="sim-btn" id="btnLpgSim" onclick="setSimMode('neo4j')">🔴 Neo4j Cypher ([:SUBCLASS_OF*0..1])</button>
+          </div>
+        </div>
+
+        <div class="svg-container">
+          <svg viewBox="0 0 1180 510" xmlns="http://www.w3.org/2000/svg">
+            <!-- Left Panel: Abstract Outcome Hierarchy (DiseaseOrPhenotypicFeature) -->
+            <rect x="20" y="20" width="555" height="470" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="40" y="48" fill="#38bdf8" font-size="13" font-weight="800">A. ABSTRACT PARENT CLASS HIERARCHY (dailymed/nodes.tsv)</text>
+            <text x="40" y="68" fill="#94a3b8" font-size="11">SHACL &amp; Clinical Queries target the parent class biolink:DiseaseOrPhenotypicFeature</text>
+
+            <!-- Parent Node: DiseaseOrPhenotypicFeature -->
+            <rect x="135" y="90" width="325" height="64" rx="10" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="297" y="114" fill="#38bdf8" font-size="13" font-weight="800" text-anchor="middle">biolink:DiseaseOrPhenotypicFeature</text>
+            <text x="297" y="132" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">Direct Nodes with this string in TSV: 0</text>
+            <text x="297" y="147" fill="#34d399" font-size="10.5" font-weight="700" text-anchor="middle">OWL Inferred Instances via rdfs:subClassOf: 193</text>
+
+            <!-- Child 1: Disease (92 nodes) -->
+            <line x1="175" y1="210" x2="245" y2="156" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="155" y="185" fill="#34d399" font-size="10" font-family="monospace">rdfs:subClassOf</text>
+
+            <rect x="45" y="212" width="235" height="62" rx="8" fill="#161f33" stroke="#34d399" stroke-width="1.5"/>
+            <text x="162" y="234" fill="#34d399" font-size="12.5" font-weight="800" text-anchor="middle">biolink:Disease</text>
+            <text x="162" y="252" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">92 Nodes in dailymed/nodes.tsv</text>
+            <text x="162" y="266" fill="#94a3b8" font-size="9.5" text-anchor="middle">Indications &amp; Boxed Contraindications</text>
+
+            <!-- Child 2: PhenotypicFeature (101 nodes) -->
+            <line x1="420" y1="210" x2="350" y2="156" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="415" y="185" fill="#34d399" font-size="10" font-family="monospace">rdfs:subClassOf</text>
+
+            <rect x="315" y="212" width="235" height="62" rx="8" fill="#161f33" stroke="#34d399" stroke-width="1.5"/>
+            <text x="432" y="234" fill="#34d399" font-size="12.5" font-weight="800" text-anchor="middle">biolink:PhenotypicFeature</text>
+            <text x="432" y="252" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">101 Nodes in dailymed/nodes.tsv</text>
+            <text x="432" y="266" fill="#94a3b8" font-size="9.5" text-anchor="middle">Adverse Drug Reactions (ADRs)</text>
+
+            <!-- Instance Leaf Nodes under Disease -->
+            <line x1="162" y1="305" x2="162" y2="275" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+            <rect x="45" y="308" width="235" height="44" rx="6" fill="#1c2740" stroke="#38bdf8"/>
+            <text x="162" y="327" fill="#f1f5f9" font-size="11" font-weight="700" text-anchor="middle">SNOMEDCT:44054006</text>
+            <text x="162" y="343" fill="#cbd5e1" font-size="10" text-anchor="middle">Type 2 diabetes mellitus</text>
+
+            <rect x="45" y="362" width="235" height="44" rx="6" fill="#1c2740" stroke="#38bdf8"/>
+            <text x="162" y="381" fill="#f1f5f9" font-size="11" font-weight="700" text-anchor="middle">SNOMEDCT:255032005</text>
+            <text x="162" y="397" fill="#cbd5e1" font-size="10" text-anchor="middle">Medullary thyroid carcinoma</text>
+
+            <!-- Instance Leaf Nodes under PhenotypicFeature -->
+            <line x1="432" y1="305" x2="432" y2="275" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+            <rect x="315" y="308" width="235" height="44" rx="6" fill="#1c2740" stroke="#38bdf8"/>
+            <text x="432" y="327" fill="#f1f5f9" font-size="11" font-weight="700" text-anchor="middle">SNOMEDCT:422587007</text>
+            <text x="432" y="343" fill="#cbd5e1" font-size="10" text-anchor="middle">Nausea (ADR)</text>
+
+            <rect x="315" y="362" width="235" height="44" rx="6" fill="#1c2740" stroke="#38bdf8"/>
+            <text x="432" y="381" fill="#f1f5f9" font-size="11" font-weight="700" text-anchor="middle">SNOMEDCT:288939007</text>
+            <text x="432" y="397" fill="#cbd5e1" font-size="10" text-anchor="middle">Dysphagia (ADR)</text>
+
+            <!-- Bottom comparison box Left -->
+            <rect x="45" y="420" width="505" height="54" rx="8" fill="#090d16" stroke="#283552"/>
+            <text x="297" y="442" fill="#34d399" font-size="11" font-family="monospace" text-anchor="middle">RDF SHACL: sh:class biolink:DiseaseOrPhenotypicFeature → 193/193 pass</text>
+            <text x="297" y="460" fill="#fb7185" font-size="11" font-family="monospace" text-anchor="middle">Neo4j: MATCH (o:DiseaseOrPhenotypicFeature) → 0 rows! Must hardcode 4 labels</text>
+
+            <!-- Right Panel: Multi-Hop Drug Class Hierarchy (MESH:M0160181) -->
+            <rect x="595" y="20" width="565" height="470" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="615" y="48" fill="#c084fc" font-size="13" font-weight="800">B. MULTI-HOP TAXONOMIC INHERITANCE (dailymed/edges.tsv)</text>
+            <text x="615" y="68" fill="#94a3b8" font-size="11">Query: "Find all drugs in class MESH:M0160181 (Glucagon-Like Peptide 1)"</text>
+
+            <!-- Top Class Node: MESH:M0160181 -->
+            <rect x="735" y="90" width="290" height="58" rx="10" fill="rgba(192, 132, 252, 0.14)" stroke="#c084fc" stroke-width="2"/>
+            <text x="880" y="114" fill="#c084fc" font-size="13" font-weight="800" text-anchor="middle">MESH:M0160181</text>
+            <text x="880" y="133" fill="#f1f5f9" font-size="11" text-anchor="middle">Glucagon-Like Peptide 1 (biolink:DrugClass)</text>
+
+            <!-- Hop 1 Drugs -->
+            <line x1="695" y1="215" x2="810" y2="150" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <line x1="880" y1="215" x2="880" y2="150" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <line x1="1060" y1="215" x2="950" y2="150" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="880" y="185" fill="#34d399" font-size="10" font-family="monospace" font-weight="700" text-anchor="middle">Hop 1: subclass_of</text>
+
+            <!-- Hop 1 Node 1: Semaglutide -->
+            <rect x="615" y="218" width="165" height="58" rx="8" fill="#161f33" stroke="#34d399" stroke-width="1.5"/>
+            <text x="697" y="240" fill="#34d399" font-size="11.5" font-weight="700" text-anchor="middle">RXCUI:1991302</text>
+            <text x="697" y="257" fill="#f1f5f9" font-size="11" text-anchor="middle">semaglutide</text>
+
+            <!-- Hop 1 Node 2: Dulaglutide -->
+            <rect x="797" y="218" width="165" height="58" rx="8" fill="#161f33" stroke="#34d399" stroke-width="1.5"/>
+            <text x="880" y="240" fill="#34d399" font-size="11.5" font-weight="700" text-anchor="middle">RXCUI:1551291</text>
+            <text x="880" y="257" fill="#f1f5f9" font-size="11" text-anchor="middle">dulaglutide</text>
+
+            <!-- Hop 1 Node 3: Liraglutide -->
+            <rect x="980" y="218" width="165" height="58" rx="8" fill="#161f33" stroke="#34d399" stroke-width="1.5"/>
+            <text x="1062" y="240" fill="#34d399" font-size="11.5" font-weight="700" text-anchor="middle">RXCUI:475968</text>
+            <text x="1062" y="257" fill="#f1f5f9" font-size="11" text-anchor="middle">liraglutide</text>
+
+            <!-- Hop 2 Node: Xultophy (insulin degludec / liraglutide) -->
+            <g class="neo4j-dropped">
+              <line x1="1062" y1="342" x2="1062" y2="278" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="5,3" marker-end="url(#arrow-amber)"/>
+              <text x="995" y="315" fill="#fbbf24" font-size="10.5" font-family="monospace" font-weight="700">Hop 2: subclass_of</text>
+
+              <rect x="890" y="345" width="255" height="68" rx="8" fill="rgba(251, 191, 36, 0.14)" stroke="#fbbf24" stroke-width="2"/>
+              <text x="1017" y="367" fill="#fbbf24" font-size="12" font-weight="800" text-anchor="middle">RXCUI:1727493 (Xultophy)</text>
+              <text x="1017" y="385" fill="#f1f5f9" font-size="10.5" text-anchor="middle">insulin degludec / liraglutide</text>
+              <text x="1017" y="402" fill="#34d399" font-size="9.5" font-family="monospace" text-anchor="middle">Edge: SPL:94290323...53230f22</text>
+            </g>
+
+            <!-- Warning Callout in Right Panel -->
+            <g class="neo4j-error-banner">
+              <rect x="615" y="345" width="260" height="68" rx="8" fill="rgba(251, 113, 133, 0.18)" stroke="#fb7185" stroke-width="2"/>
+              <text x="745" y="366" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">❌ DROPPED BY NEO4J TEMPLATE!</text>
+              <text x="745" y="384" fill="#f1f5f9" font-size="10" font-family="monospace" text-anchor="middle">cypher_templates.py:201 uses</text>
+              <text x="745" y="400" fill="#fb7185" font-size="10.5" font-family="monospace" font-weight="700" text-anchor="middle">[:SUBCLASS_OF*0..1] (Max 1 Hop)</text>
+            </g>
+
+            <!-- Bottom comparison box Right -->
+            <rect x="615" y="425" width="530" height="50" rx="8" fill="#090d16" stroke="#283552"/>
+            <text x="880" y="446" fill="#34d399" font-size="11" font-family="monospace" text-anchor="middle">RDF SPARQL: ?drug rdfs:subClassOf+ mesh:M0160181 → Returns all 4 drugs</text>
+            <text x="880" y="463" fill="#fb7185" font-size="11" font-family="monospace" text-anchor="middle">Neo4j Cypher: (s)-[:SUBCLASS_OF*0..1]-&gt;(class) → Silently drops RXCUI:1727493</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Side by side code proof for Section 3 -->
+      <div class="grid-2">
+        <div class="card card-rdf">
+          <h3><span class="badge badge-rdf">RDF / SHACL + OWL</span> Intrinsic W3C Transitive Subsumption</h3>
+          <p style="font-size: 0.86rem; color: var(--text-secondary);">
+            In <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/resources/rwdkn-shacl-shapes.ttl" style="color:var(--accent-blue);">rwdkn-shacl-shapes.ttl</a> and <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/shacl_validation.py" style="color:var(--accent-blue);">shacl_validation.py</a>, W3C RDFS formally defines <code>rdfs:subClassOf</code> as transitive without application-side closure tables:
+          </p>
+          <pre><code><span class="cmt"># 1. rwdkn-shacl-shapes.ttl (Line 12):</span>
+rwdkn:CausalMechanismShape a sh:NodeShape ;
+    sh:property [
+        sh:path rdf:object ;
+        <span class="kw">sh:class biolink:DiseaseOrPhenotypicFeature</span> ;
+    ] .
+
+<span class="cmt"># 2. Transitive SPARQL Class Query (Unbounded Hops):</span>
+<span class="kw">SELECT</span> ?drug ?drugName <span class="kw">WHERE</span> {
+    ?drug <span class="kw">rdfs:subClassOf+</span> &lt;http://id.nlm.nih.gov/mesh/M0160181&gt; ;
+          rdfs:label ?drugName .
+}
+<span class="cmt"># Automatically returns: semaglutide, dulaglutide, liraglutide,</span>
+<span class="cmt"># AND 2-hop combination drug Xultophy (RXCUI:1727493)!</span></code></pre>
+        </div>
+
+        <div class="card card-lpg">
+          <h3><span class="badge badge-lpg">Neo4j 5.26 Remediated</span> Quantified Paths &amp; Centralized Closure</h3>
+          <p style="font-size: 0.86rem; color: var(--text-secondary);">
+            In <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/semantic_query_planner.py" style="color:var(--accent-blue);">semantic_query_planner.py</a> and <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/query_translator/cypher_templates.py" style="color:var(--accent-blue);">cypher_templates.py</a>, v1's 1-hop bound and scattered label lists were replaced with centralized Biolink closure and GQL quantified relationships:
+          </p>
+          <pre><code><span class="cmt"># 1. semantic_query_planner.py — Centralized Biolink subclass closure:</span>
+_CLINICAL_OBJECT_LABELS = <span class="str">"|"</span>.join(
+    expand_biolink_class_closure(<span class="str">"DiseaseOrPhenotypicFeature"</span>)
+)
+
+<span class="cmt">// 2. cypher_templates.py — GQL-conformant quantified relationship:</span>
+<span class="cmt">// Replaces v1 [:SUBCLASS_OF*0..1] with arbitrary-depth -[:SUBCLASS_OF]-&gt;*</span>
+<span class="kw">MATCH</span> (s:Drug|ChemicalEntity)-[<span class="kw">:SUBCLASS_OF</span>]-&gt;*(class:DrugClass)
+<span class="kw">WHERE</span> class.id <span class="kw">IN</span> $class_ids <span class="kw">OR</span> s.id <span class="kw">IN</span> $class_ids
+<span class="cmt">// Now traverses 2+ hops to reach Xultophy (RXCUI:1727493)!</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: TIME-VARYING CAUSAL RELATIONSHIPS & PREDICATE HIERARCHY -->
+    <section id="causal-predicates">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 04 // Points #4 &amp; #5: Predicate Sub-Properties &amp; Dynamic Cypher Relationship Types</span>
+          <h2 class="section-title">Semaglutide → Nausea Across 4 Cohorts, <code>rdfs:subPropertyOf</code> &amp; Dynamic Cypher Types</h2>
+        </div>
+        <span class="badge badge-curie">RXCUI:1991302 → SNOMEDCT:422587007</span>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Below is the multi-cohort evidence for <strong>Semaglutide → Nausea</strong> across <strong>CPRD (180-day vs. 360-day longitudinal EHR cohorts)</strong>, <strong>FDA FAERS</strong>, <strong>DailyMed</strong>, and <strong>PubMed</strong>.
+        The absence of native W3C <code>rdfs:subPropertyOf</code> entailment is a genuine semantic distinction between RDF and LPG. However, two aspects of the v1 Neo4j analysis required correction:
+        (1) omitting <code>RELATED_TO</code> from <code>_ADVERSE_EVENT_REL_PATTERN</code> was a v1 template defect (now fixed via centralized predicate closure in <code>semantic_query_planner.py</code>), and
+        (2) <strong>current Neo4j 5.26+ CAN dynamically parameterize relationship types and node labels</strong> using <code>MATCH (s)-[r:$($rel_types)]-&gt;(o:$($object_labels))</code>.
+      </p>
+
+      <!-- Real Project Evidence Table: Semaglutide -> Nausea -->
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Cohort Source</th>
+              <th>Edge / Association ID</th>
+              <th>Biolink Predicate</th>
+              <th>Time-Window / Statistical &amp; Provenance Metadata</th>
+              <th>v1 vs. v2 Neo4j Recall</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>CPRD Aurum</strong><br/><small>(180-Day Window)</small></td>
+              <td><code>CPRD:acute:semaglutide:422587007:comparator=non-glp1-antidiabetics:history=90:followup=180</code></td>
+              <td><code>biolink:associated_with</code></td>
+              <td>
+                <strong>Odds Ratio: <code>2.905</code></strong> | 95% CI: <code>[1.779, 4.744]</code> | <code>p = 7.65e-05</code><br/>
+                <code>history_days: 90</code> | <code>follow_up_days: 180</code> | Comparator: Non-GLP1 Antidiabetics
+              </td>
+              <td><span class="badge badge-rdf">Matched (v1 &amp; v2)</span></td>
+            </tr>
+            <tr>
+              <td><strong>CPRD Aurum</strong><br/><small>(360-Day Window)</small></td>
+              <td><code>CPRD:acute:semaglutide:422587007:comparator=non-glp1-antidiabetics:history=90:followup=360</code></td>
+              <td><code>biolink:associated_with</code></td>
+              <td>
+                <strong>Odds Ratio: <code>3.184</code></strong> | 95% CI: <code>[2.009, 5.046]</code> | <code>p = 7.65e-06</code><br/>
+                <code>history_days: 90</code> | <code>follow_up_days: 360</code> | Comparator: Non-GLP1 Antidiabetics
+              </td>
+              <td><span class="badge badge-rdf">Matched (v1 &amp; v2)</span></td>
+            </tr>
+            <tr>
+              <td><strong>FDA FAERS</strong></td>
+              <td><code>FAERS:1991302:10028813</code></td>
+              <td><code>biolink:associated_with</code></td>
+              <td>
+                <strong>Adverse Event Count: <code>10,340</code></strong> / <code>538,136</code> total cases<br/>
+                Reporting Period: <code>2018Q1–2026Q1</code> | MedDRA PT: <code>10028813</code>
+              </td>
+              <td><span class="badge badge-rdf">Matched (v1 &amp; v2)</span></td>
+            </tr>
+            <tr>
+              <td><strong>DailyMed SPL</strong></td>
+              <td><code>SPL:adec4fd2-6858-4c99-91d4-531f5f2a2d79:34084-4:e828cbd113920d64</code></td>
+              <td><code>biolink:has_adverse_event</code></td>
+              <td>
+                Ozempic SPL Section <code>34084-4</code> (Adverse Reactions)<br/>
+                <code>causality: established_reaction</code> | <code>confidence: 0.90</code>
+              </td>
+              <td><span class="badge badge-rdf">Matched (v1 &amp; v2)</span></td>
+            </tr>
+            <tr>
+              <td><strong>PubMed Abstract</strong></td>
+              <td><code>PUBMED:29713961:abstract:00ade49dc303f23e</code></td>
+              <td><code>biolink:affects</code></td>
+              <td>PMID <code>29713961</code> clinical trial abstract extraction</td>
+              <td><span class="badge badge-rdf">Matched (v1 &amp; v2)</span></td>
+            </tr>
+            <tr>
+              <td><strong>PubMed Abstract</strong></td>
+              <td><code>PUBMED:29713961:abstract:f51cb14255efc85f</code></td>
+              <td><code>biolink:related_to</code></td>
+              <td>PMID <code>29713961</code> clinical trial abstract extraction</td>
+              <td><span class="badge badge-lpg">Dropped in v1 → Matched in v2</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DIAGRAM 3: PREDICATE HIERARCHY & REIFICATION VS EDGE PROPERTIES -->
+      <div class="diagram-shell">
+        <div class="diagram-toolbar">
+          <div>
+            <strong style="font-size: 1rem;">Hierarchical Diagram 3: Biolink Predicate Inheritance (<code>rdfs:subPropertyOf</code>) &amp; Centralized Closure</strong>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">Intrinsic W3C <code>rdfs:subPropertyOf</code> entailment vs. centralized Biolink predicate expansion &amp; Neo4j 5.26 dynamic types</div>
+          </div>
+          <span class="badge badge-rdf">rdf_projection.py + semantic_query_planner.py</span>
+        </div>
+
+        <div class="svg-container">
+          <svg viewBox="0 0 1180 450" xmlns="http://www.w3.org/2000/svg">
+            <!-- Left Side: Biolink Predicate Hierarchy -->
+            <rect x="20" y="20" width="520" height="410" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="40" y="48" fill="#34d399" font-size="13" font-weight="800">A. BIOLINK PREDICATE HIERARCHY (rdfs:subPropertyOf)</text>
+            <text x="40" y="68" fill="#94a3b8" font-size="11">Parent-child property tree in biolink-model-4.3.6.yaml</text>
+
+            <!-- Root Predicate: biolink:related_to -->
+            <rect x="155" y="90" width="250" height="54" rx="8" fill="rgba(52, 211, 153, 0.14)" stroke="#34d399" stroke-width="2"/>
+            <text x="280" y="114" fill="#34d399" font-size="13" font-weight="800" text-anchor="middle">biolink:related_to</text>
+            <text x="280" y="132" fill="#f1f5f9" font-size="10" font-family="monospace" text-anchor="middle">Root Predicate (PUBMED:29713961...f51c)</text>
+
+            <!-- Child Predicates -->
+            <line x1="120" y1="195" x2="220" y2="146" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <line x1="280" y1="195" x2="280" y2="146" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <line x1="440" y1="195" x2="340" y2="146" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="280" y="175" fill="#34d399" font-size="10" font-family="monospace" text-anchor="middle">rdfs:subPropertyOf</text>
+
+            <rect x="40" y="198" width="150" height="52" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="115" y="220" fill="#38bdf8" font-size="11.5" font-weight="700" text-anchor="middle">biolink:affects</text>
+            <text x="115" y="238" fill="#94a3b8" font-size="9.5" text-anchor="middle">PubMed (00ade49d)</text>
+
+            <rect x="205" y="198" width="150" height="52" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="280" y="220" fill="#38bdf8" font-size="11.5" font-weight="700" text-anchor="middle">associated_with</text>
+            <text x="280" y="238" fill="#94a3b8" font-size="9.5" text-anchor="middle">CPRD (180d/360d) &amp; FAERS</text>
+
+            <rect x="370" y="198" width="150" height="52" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="445" y="220" fill="#38bdf8" font-size="11.5" font-weight="700" text-anchor="middle">has_adverse_event</text>
+            <text x="445" y="238" fill="#94a3b8" font-size="9.5" text-anchor="middle">DailyMed SPL (e828cbd1)</text>
+
+            <!-- Grandchildren under affects -->
+            <line x1="80" y1="290" x2="100" y2="252" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+            <line x1="165" y1="290" x2="135" y2="252" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+            <rect x="35" y="292" width="90" height="38" rx="6" fill="#1c2740" stroke="#64748b"/>
+            <text x="80" y="315" fill="#e2e8f0" font-size="10" text-anchor="middle">increases</text>
+
+            <rect x="135" y="292" width="90" height="38" rx="6" fill="#1c2740" stroke="#64748b"/>
+            <text x="180" y="315" fill="#e2e8f0" font-size="10" text-anchor="middle">decreases</text>
+
+            <!-- Neo4j Remediated Callout Box -->
+            <rect x="40" y="346" width="480" height="68" rx="8" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="280" y="366" fill="#38bdf8" font-size="11" font-weight="800" text-anchor="middle">✅ REMEDIATED IN NEO4J 5.26 + SEMANTIC PLANNER:</text>
+            <text x="280" y="384" fill="#e2e8f0" font-size="10" font-family="monospace" text-anchor="middle">expand_biolink_predicate_closure("biolink:related_to")</text>
+            <text x="280" y="401" fill="#34d399" font-size="10.5" font-weight="700" text-anchor="middle">Includes RELATED_TO + supports dynamic [r:$($rel_types)]!</text>
+
+            <!-- Right Side: RDF Reified Association & Time-Windowed Provenance -->
+            <rect x="560" y="20" width="600" height="410" rx="12" fill="#111827" stroke="#283552" stroke-width="1.5"/>
+            <text x="580" y="48" fill="#38bdf8" font-size="13" font-weight="800">B. RDF REIFIED ASSOCIATION + W3C PROV-O ARCHITECTURE</text>
+            <text x="580" y="68" fill="#94a3b8" font-size="11">How rdf_projection.py models time-varying CPRD Odds Ratios without overwriting edges</text>
+
+            <!-- Subject: Semaglutide -->
+            <rect x="580" y="165" width="160" height="62" rx="8" fill="#161f33" stroke="#34d399" stroke-width="2"/>
+            <text x="660" y="190" fill="#34d399" font-size="12" font-weight="800" text-anchor="middle">RXCUI:1991302</text>
+            <text x="660" y="208" fill="#f1f5f9" font-size="11" text-anchor="middle">Semaglutide</text>
+
+            <!-- Object: Nausea -->
+            <rect x="980" y="165" width="160" height="62" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="2"/>
+            <text x="1060" y="190" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">SNOMEDCT:422587007</text>
+            <text x="1060" y="208" fill="#f1f5f9" font-size="11" text-anchor="middle">Nausea</text>
+
+            <!-- Direct asserted triple -->
+            <line x1="740" y1="196" x2="978" y2="196" stroke="#34d399" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-green)"/>
+            <text x="860" y="186" fill="#34d399" font-size="10.5" font-family="monospace" font-weight="700" text-anchor="middle">biolink:associated_with</text>
+
+            <!-- Reified Association Node 1 (180d) -->
+            <rect x="745" y="85" width="230" height="75" rx="8" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="860" y="104" fill="#38bdf8" font-size="11" font-weight="800" text-anchor="middle">biolink:Association (180-Day)</text>
+            <text x="860" y="121" fill="#fbbf24" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">odds_ratio: 2.905 (p=7.65e-5)</text>
+            <text x="860" y="137" fill="#cbd5e1" font-size="10" font-family="monospace" text-anchor="middle">follow_up_days: 180 | hist: 90</text>
+            <text x="860" y="151" fill="#94a3b8" font-size="9.5" text-anchor="middle">ci95: [1.779, 4.744]</text>
+
+            <path d="M 745 122 L 660 163" stroke="#38bdf8" stroke-width="1.5" fill="none" marker-end="url(#arrow-blue)"/>
+            <path d="M 975 122 L 1060 163" stroke="#38bdf8" stroke-width="1.5" fill="none" marker-end="url(#arrow-blue)"/>
+
+            <!-- Reified Association Node 2 (360d) -->
+            <rect x="745" y="235" width="230" height="75" rx="8" fill="rgba(192, 132, 252, 0.12)" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="860" y="254" fill="#c084fc" font-size="11" font-weight="800" text-anchor="middle">biolink:Association (360-Day)</text>
+            <text x="860" y="271" fill="#fbbf24" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">odds_ratio: 3.184 (p=7.65e-6)</text>
+            <text x="860" y="287" fill="#cbd5e1" font-size="10" font-family="monospace" text-anchor="middle">follow_up_days: 360 | hist: 90</text>
+            <text x="860" y="301" fill="#94a3b8" font-size="9.5" text-anchor="middle">ci95: [2.009, 5.046]</text>
+
+            <path d="M 745 272 L 660 229" stroke="#c084fc" stroke-width="1.5" fill="none" marker-end="url(#arrow-purple)"/>
+            <path d="M 975 272 L 1060 229" stroke="#c084fc" stroke-width="1.5" fill="none" marker-end="url(#arrow-purple)"/>
+
+            <!-- W3C PROV-O Entity Node -->
+            <rect x="745" y="345" width="230" height="65" rx="8" fill="#161f33" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="860" y="365" fill="#fbbf24" font-size="11" font-weight="800" text-anchor="middle">prov:Entity (Evidence Record)</text>
+            <text x="860" y="382" fill="#e2e8f0" font-size="10" font-family="monospace" text-anchor="middle">prov:wasGeneratedBy Extraction</text>
+            <text x="860" y="398" fill="#94a3b8" font-size="9.5" text-anchor="middle">Links to SPL Section / PMID / Cohort</text>
+
+            <line x1="860" y1="310" x2="860" y2="343" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: CLINICAL RULES, REGIMENS & SHACL VS IMPERATIVE PYTHON -->
+    <section id="regimen-shacl">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 05 // Points #6 &amp; #7: Regimen Connectivity &amp; Native Database Constraints vs. SHACL</span>
+          <h2 class="section-title">Mandatory <code>MATCH</code> Semantics, Neo4j 5.26 CE/EE Constraints &amp; Declarative SHACL Rules</h2>
+        </div>
+        <span class="badge badge-curie">neo4j:5.26.28 CE vs. Enterprise Graph Types vs. SHACL</span>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        In Competency Question 5 (<strong>CQ-5: Concomitant Regimen &amp; Combination Therapy Rules</strong>), an indication or adverse event is conditioned on a multi-drug or lifestyle regimen (e.g., <strong>Wegovy <code>RXCUI:1991302</code> is indicated for Obesity <code>SNOMEDCT:414916001</code> <em>only in combination with</em> a Weight Reduction Diet <code>SNOMEDCT:289169006</code> AND Exercise Therapy <code>SNOMEDCT:229065009</code></strong>).
+        Reviewing our CQ-5 verification incidents (<a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/docs/2026-08-30-cq5-regimen-choice-implementation-verification.md" style="color:var(--accent-blue);">2026-08-30-cq5-regimen-choice-implementation-verification.md</a>) clarifies two critical points:
+        (1) the 19/19 detached regimen incident was caused by using <code>OPTIONAL MATCH</code> for a functionally mandatory parent <code>Association</code>, and
+        (2) stating that Neo4j has "NO native schema/shape validation" is overly broad—we must distinguish between <strong>Neo4j 5.26 Community Edition constraints</strong>, <strong>Neo4j Enterprise Edition / 2025 Graph Types</strong>, and <strong>higher-order SHACL shapes &amp; conditional rules</strong>.
+      </p>
+
+      <!-- DIAGRAM 4: REGIMEN CHOICE GROUP HIERARCHY & SHACL VS NEO4J -->
+      <div class="diagram-shell">
+        <div class="diagram-toolbar">
+          <div>
+            <strong style="font-size: 1rem;">Hierarchical Diagram 4: CQ-5 Conditional Regimen Hierarchy &amp; Pharmacogenomic Rule Evaluation</strong>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">Real Wegovy combination regimen (`urn:uuid:b02deb6b-877f-5a64-b51a-6392976a178c`) from `dailymed/regimens.jsonl`</div>
+          </div>
+          <span class="badge badge-rdf">rwdkn-regimen-shapes.ttl (50 Lines)</span>
+        </div>
+
+        <div class="svg-container">
+          <svg viewBox="0 0 1180 430" xmlns="http://www.w3.org/2000/svg">
+            <!-- Top Level: Reified Clinical Association -->
+            <rect x="330" y="20" width="520" height="74" rx="10" fill="rgba(56, 189, 248, 0.12)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="590" y="43" fill="#38bdf8" font-size="13" font-weight="800" text-anchor="middle">biolink:Association (SPL:ee06186f-2aa3-4990...:a00385dfe9eb17a1)</text>
+            <text x="590" y="62" fill="#f1f5f9" font-size="11.5" font-family="monospace" text-anchor="middle">Subject: RXCUI:1991302 (Wegovy) → Predicate: biolink:treats → Object: SNOMEDCT:414916001 (Obesity)</text>
+            <text x="590" y="80" fill="#fbbf24" font-size="10.5" font-weight="700" text-anchor="middle">Why LPG Also Reifies Here: An LPG edge cannot link to child RegimenChoiceGroup nodes!</text>
+
+            <!-- Arrow down to RegimenChoiceGroup -->
+            <line x1="590" y1="94" x2="590" y2="142" stroke="#34d399" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+            <text x="685" y="122" fill="#34d399" font-size="11" font-family="monospace" font-weight="700">rwdkn:hasRegimenChoiceGroup</text>
+
+            <!-- Middle Level: RegimenChoiceGroup -->
+            <rect x="355" y="145" width="470" height="78" rx="10" fill="rgba(52, 211, 153, 0.12)" stroke="#34d399" stroke-width="2"/>
+            <text x="590" y="168" fill="#34d399" font-size="13" font-weight="800" text-anchor="middle">rwdkn:RegimenChoiceGroup</text>
+            <text x="590" y="186" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">ID: urn:uuid:b02deb6b-877f-5a64-b51a-6392976a178c</text>
+            <text x="590" y="205" fill="#fbbf24" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">regimenRole: "indicated-only-with" | selectionBehavior: "all" | regimenType: "combination"</text>
+
+            <!-- Arrows to RegimenOption 1 & 2 and SHACL Inferred Triple -->
+            <path d="M 460 223 L 230 288" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+            <path d="M 590 223 L 590 288" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+            <path d="M 720 223 L 950 288" stroke="#c084fc" stroke-width="2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-purple)"/>
+
+            <text x="310" y="258" fill="#38bdf8" font-size="10.5" font-family="monospace" font-weight="700">rwdkn:regimenOption</text>
+            <text x="645" y="258" fill="#38bdf8" font-size="10.5" font-family="monospace" font-weight="700">rwdkn:regimenOption</text>
+            <text x="890" y="258" fill="#c084fc" font-size="10.5" font-family="monospace" font-weight="700">sh:TripleRule (OWL/SHACL)</text>
+
+            <!-- Option 1: Weight reduction diet -->
+            <rect x="50" y="290" width="340" height="110" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="220" y="314" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">rwdkn:RegimenOption #1 (Required)</text>
+            <text x="220" y="334" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">optionEntity: SNOMEDCT:289169006</text>
+            <text x="220" y="352" fill="#34d399" font-size="11.5" font-weight="700" text-anchor="middle">"Weight reduction diet"</text>
+            <text x="220" y="370" fill="#cbd5e1" font-size="10" text-anchor="middle">optionType: non_pharmacologic | required: true</text>
+            <text x="220" y="388" fill="#94a3b8" font-size="9.5" font-family="monospace" text-anchor="middle">Links to (:Procedure {id: "SNOMEDCT:289169006"})</text>
+
+            <!-- Option 2: Exercise therapy -->
+            <rect x="420" y="290" width="340" height="110" rx="8" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="590" y="314" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">rwdkn:RegimenOption #2 (Required)</text>
+            <text x="590" y="334" fill="#f1f5f9" font-size="11" font-family="monospace" text-anchor="middle">optionEntity: SNOMEDCT:229065009</text>
+            <text x="590" y="352" fill="#34d399" font-size="11.5" font-weight="700" text-anchor="middle">"Exercise therapy"</text>
+            <text x="590" y="370" fill="#cbd5e1" font-size="10" text-anchor="middle">optionType: non_pharmacologic | required: true</text>
+            <text x="590" y="388" fill="#94a3b8" font-size="9.5" font-family="monospace" text-anchor="middle">Links to (:Procedure {id: "SNOMEDCT:229065009"})</text>
+
+            <!-- SHACL Rule Box vs Neo4j Remediated -->
+            <rect x="790" y="290" width="355" height="110" rx="8" fill="rgba(192, 132, 252, 0.1)" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="967" y="314" fill="#c084fc" font-size="12" font-weight="800" text-anchor="middle">SHACL Rules &amp; Neo4j Mandatory MATCH</text>
+            <text x="967" y="334" fill="#34d399" font-size="10.5" font-family="monospace" text-anchor="middle">✓ SHACL: sh:minCount 1 + sh:in enum</text>
+            <text x="967" y="352" fill="#c084fc" font-size="10.5" font-family="monospace" text-anchor="middle">✓ SHACL: sh:TripleRule → rwdkn:isMonotherapy</text>
+            <text x="967" y="370" fill="#38bdf8" font-size="10.5" font-family="monospace" text-anchor="middle">✓ Neo4j v2: Mandatory MATCH before MERGE</text>
+            <text x="967" y="388" fill="#34d399" font-size="10" font-weight="700" text-anchor="middle">✓ Neo4j v2: Post-load 0-orphan assertion</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Comparison of the CQ-5 Verification Incidents & Schema Capabilities -->
+      <div class="grid-2" style="margin-bottom: 1.25rem;">
+        <div class="card card-rdf">
+          <h3><span class="badge badge-rdf">RDF + SHACL</span> Declarative Closed-World Shapes &amp; <code>sh:TripleRule</code></h3>
+          <p style="font-size: 0.86rem; color: var(--text-secondary);">
+            In <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/resources/rwdkn-regimen-shapes.ttl" style="color:var(--accent-blue);">rwdkn-regimen-shapes.ttl</a>, value enumerations, minimum cardinality, and conditional rule inference (`sh:TripleRule`) are expressed declaratively in a portable W3C standard:
+          </p>
+          <pre><code>rwdkn:RegimenChoiceGroupShape a sh:NodeShape ;
+    sh:targetClass rwdkn:RegimenChoiceGroup ;
+    sh:property [
+        sh:path rwdkn:regimenOption ;
+        <span class="kw">sh:minCount 1</span> ;
+        sh:node rwdkn:RegimenOptionShape ;
+    ] ;
+    <span class="cmt"># Declarative SHACL Rule: automatically infers monotherapy!</span>
+    <span class="kw">sh:rule</span> [
+        a <span class="kw">sh:TripleRule</span> ;
+        sh:subject sh:this ;
+        sh:predicate rwdkn:isMonotherapy ;
+        sh:object <span class="num">true</span> ;
+        sh:condition [
+            sh:property [ sh:path rwdkn:selectionBehavior ;
+                          sh:hasValue <span class="str">"none"</span> ]
+        ]
+    ] .</code></pre>
+        </div>
+
+        <div class="card card-lpg">
+          <h3><span class="badge badge-lpg">Neo4j Remediated</span> Mandatory <code>MATCH</code> Before <code>MERGE</code> (Point #6)</h3>
+          <p style="font-size: 0.86rem; color: var(--text-secondary);">
+            In <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/load_kgx_to_neo4j.py" style="color:var(--accent-blue);">load_kgx_to_neo4j.py</a>, v1's <code>OPTIONAL MATCH</code> (or <code>MERGE</code> before <code>MATCH</code>) was replaced so required parent <code>Association</code> and <code>KGXNode</code> entities are matched first, backed by post-load connectivity assertions:
+          </p>
+          <pre><code><span class="cmt">// Remediated load_regimens() in load_kgx_to_neo4j.py:</span>
+<span class="cmt">// 1. Mandatory MATCH precedes MERGE so missing Associations</span>
+<span class="cmt">//    never create detached RegimenChoiceGroup nodes:</span>
+<span class="kw">UNWIND</span> $rows <span class="kw">AS</span> r
+<span class="kw">MATCH</span> (a:Association {id: r.association_id})
+<span class="kw">MERGE</span> (g:RegimenChoiceGroup {id: r.group_id})
+<span class="kw">SET</span> g += r.props
+<span class="kw">MERGE</span> (a)-[:HAS_REGIMEN_CHOICE_GROUP]-&gt;(g)
+
+<span class="cmt">// 2. Post-load connectivity assertion + _validate_regimen_integrity()</span>
+<span class="cmt">//    aborts immediately if any group or option is unlinked.</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Point 7 Table: Schema & Constraint Capability Matrix across Neo4j CE, Neo4j EE/2025, and SHACL -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Constraint / Validation Capability</th>
+              <th>Deployed <code>neo4j:5.26.28</code> Community Edition (CE)</th>
+              <th>Neo4j Enterprise Edition (EE) &amp; Neo4j 2025 Graph Types</th>
+              <th>W3C SHACL + OWL (<code>pyshacl</code> + <code>rwdkn-*.ttl</code>)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Node / Relationship Uniqueness</strong><br/><small>(<code>IS UNIQUE</code>)</small></td>
+              <td><span class="badge badge-rdf">Supported &amp; Active</span><br/><small>5 constraints enforced in <code>ensure_indexes()</code></small></td>
+              <td><span class="badge badge-rdf">Supported</span><br/><small>Includes composite <code>IS NODE KEY</code></small></td>
+              <td><span class="badge badge-rdf">Supported</span><br/><small>IRIs are globally unique by definition</small></td>
+            </tr>
+            <tr>
+              <td><strong>Property Existence &amp; Data Types</strong><br/><small>(<code>IS NOT NULL</code>, <code>IS :: STRING</code>)</small></td>
+              <td><span class="badge badge-bug">Not Available in CE</span><br/><small>Requires application/Python validation</small></td>
+              <td><span class="badge badge-rdf">Supported in Enterprise</span><br/><small>Native property existence &amp; type constraints</small></td>
+              <td><span class="badge badge-rdf">Supported</span><br/><small><code>sh:minCount 1</code>, <code>sh:datatype xsd:*</code></small></td>
+            </tr>
+            <tr>
+              <td><strong>Closed-World Graph Type / Endpoint Labels</strong><br/><small>(e.g., <code>(:Association)-[:HAS_REGIMEN]-&gt;(:RegimenChoiceGroup)</code>)</small></td>
+              <td><span class="badge badge-bug">Not Available in CE</span></td>
+              <td><span class="badge badge-lpg">Supported in Neo4j 2025 EE</span><br/><small><code>CREATE GRAPH TYPE</code> enforces endpoint labels</small></td>
+              <td><span class="badge badge-rdf">Supported + Subclass-Aware</span><br/><small><code>sh:class biolink:DiseaseOrPhenotypicFeature</code></small></td>
+            </tr>
+            <tr>
+              <td><strong>Allowed Value Enumerations &amp; Conditional Rules</strong><br/><small>(e.g., <code>sh:in</code>, <code>sh:TripleRule</code> inferring <code>isMonotherapy</code>)</small></td>
+              <td><span class="badge badge-bug">Requires Python / Triggers</span></td>
+              <td><span class="badge badge-bug">Requires Application Code / APOC</span><br/><small>No native declarative rule inference</small></td>
+              <td><span class="badge badge-rdf">Native Declarative Standard</span><br/><small><code>sh:in ("one-of" "all" ...)</code> &amp; <code>sh:TripleRule</code></small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 6: CODEBASE MAINTENANCE FOOTPRINT & STRATEGIC MATRIX -->
+    <section id="footprint">
+      <div class="section-header">
+        <div>
+          <span class="section-num">Section 06 // Point #8: Like-for-Like Engineering Footprint &amp; Strategic Synthesis</span>
+          <h2 class="section-title">Component-by-Component Codebase Audit: Separating Graph Semantics from Application UI</h2>
+        </div>
+        <span class="badge badge-purple">Strict Like-for-Like Subsystem Comparison</span>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        An earlier summary compared <code>766 LOC</code> (RDF projection + SHACL validation) against <code>6,964 LOC</code> for the entire Neo4j application stack (which included <code>query_app.py</code> at 4,207 LOC—the FastAPI HTTP server, LLM orchestration, entity synonym lookup, and UI formatting). To ensure a rigorous <strong>apples-to-apples comparison</strong>, the table below decomposes the codebase by functional layer, separating <strong>shared upstream KGX export</strong> and <strong>shared application/UI orchestration</strong> from the <strong>graph-specific projection, validation, semantic expansion, and query execution layers</strong>.
+      </p>
+
+      <!-- Like-for-Like Functional Component Table -->
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Functional Layer</th>
+              <th>RDF / OWL / SHACL Implementation</th>
+              <th>RDF LOC</th>
+              <th>Neo4j (LPG) Implementation</th>
+              <th>Neo4j LOC</th>
+              <th>Architectural Takeaway</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Upstream Source-to-KGX Normalization</strong><br/><small>(Shared by both graphs)</small></td>
+              <td><code>export_kgx.py</code> (with canonical <code>reconcile_node_records</code>)</td>
+              <td><code>2,130</code><br/><small>(Shared)</small></td>
+              <td><code>export_kgx.py</code> (with canonical <code>reconcile_node_records</code>)</td>
+              <td><code>2,130</code><br/><small>(Shared)</small></td>
+              <td>Required by both architectures; order-independent node typing benefits both RDF and LPG.</td>
+            </tr>
+            <tr>
+              <td><strong>2. Graph Projection &amp; Loader Layer</strong></td>
+              <td><a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/rdf_projection.py" style="color:var(--accent-blue);">rdf_projection.py</a> (N-Triples + PROV-O projection)</td>
+              <td><strong style="color:var(--accent-emerald);">559 LOC</strong></td>
+              <td><a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/load_kgx_to_neo4j.py" style="color:var(--accent-blue);">load_kgx_to_neo4j.py</a> (Batch UNWIND loader, index/constraint DDL, ancestor labels)</td>
+              <td><strong style="color:var(--accent-amber);">1,125 LOC</strong></td>
+              <td>Neo4j requires explicit batching, label sanitization, and relationship-type grouping per edge batch.</td>
+            </tr>
+            <tr>
+              <td><strong>3. Schema, Shape &amp; Connectivity Validation</strong></td>
+              <td><a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/shacl_validation.py" style="color:var(--accent-blue);">shacl_validation.py</a> (83) + <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/resources/rwdkn-shacl-shapes.ttl" style="color:var(--accent-blue);">rwdkn-shacl-shapes.ttl</a> (74) + <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/resources/rwdkn-regimen-shapes.ttl" style="color:var(--accent-blue);">rwdkn-regimen-shapes.ttl</a> (50)</td>
+              <td><strong style="color:var(--accent-emerald);">207 LOC</strong></td>
+              <td><code>_validate_regimen_integrity()</code> &amp; preflight/post-load checks in <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-data-pipeline/subprojects/biolink-bridge/load_kgx_to_neo4j.py" style="color:var(--accent-blue);">load_kgx_to_neo4j.py</a></td>
+              <td><strong style="color:var(--accent-amber);">185 LOC</strong></td>
+              <td>Comparable line count (~200 LOC), but SHACL is declarative, subclass-aware, and includes <code>sh:TripleRule</code> inference.</td>
+            </tr>
+            <tr>
+              <td><strong>4. Semantic Hierarchy &amp; Query Translation Layer</strong></td>
+              <td>Native OWL/RDFS reasoner + <code>rwdkn-model.owl.nt</code> (generated automatically from Biolink YAML)</td>
+              <td><strong style="color:var(--accent-emerald);">0 Custom Python LOC</strong><br/><small>(Declarative OWL/SPARQL)</small></td>
+              <td><a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/semantic_query_planner.py" style="color:var(--accent-blue);">semantic_query_planner.py</a> (468) + <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/query_translator/cypher_templates.py" style="color:var(--accent-blue);">cypher_templates.py</a> (367) + <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/query_translator/cypher_generation.py" style="color:var(--accent-blue);">cypher_generation.py</a> (232) + <a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/query_translator/kg_adapters/rwdkn_neo4j.py" style="color:var(--accent-blue);">rwdkn_neo4j.py</a> (563)</td>
+              <td><strong style="color:var(--accent-rose);">1,630 LOC</strong></td>
+              <td>Even when properly centralized in <code>semantic_query_planner.py</code>, LPG requires ~1,000+ LOC of custom Python planner/template/adapter logic to emulate class &amp; predicate closures.</td>
+            </tr>
+            <tr style="background: rgba(56, 189, 248, 0.06);">
+              <td><strong>Subtotal: Core Graph Projection, Validation &amp; Semantic Query Layer (Like-for-Like)</strong></td>
+              <td><strong>Declarative RDF Projection + SHACL + OWL</strong></td>
+              <td><strong style="color:var(--accent-emerald); font-family:var(--font-mono);">766 LOC</strong></td>
+              <td><strong>Remediated Neo4j Loader + Centralized Semantic Planner + Cypher Templates</strong></td>
+              <td><strong style="color:var(--accent-amber); font-family:var(--font-mono);">2,940 LOC (3.8x)</strong></td>
+              <td><strong>True like-for-like ratio is 3.8x</strong> (766 vs. 2,940 LOC), driven primarily by custom semantic planning and batch loading in Python.</td>
+            </tr>
+            <tr>
+              <td><strong>5. Full-Stack Application Server, NL Routing &amp; UI Controller</strong><br/><small>(Excluded from core graph comparison)</small></td>
+              <td><em>Not yet implemented as a standalone Fuseki UI server</em></td>
+              <td><em>N/A</em></td>
+              <td><a href="file:///home/chandrakola/development/NLM/kg/rwdkn-service/subprojects/query-app/query_app.py" style="color:var(--accent-blue);">query_app.py</a> (FastAPI endpoints, LLM prompt orchestration, UI formatting)</td>
+              <td><code>4,207 LOC</code><br/><small>(App / UI Layer)</small></td>
+              <td>Application-tier orchestration that would largely be shared by any natural-language clinical UI regardless of backend store.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Strategic Comparison Matrix -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Architectural Dimension</th>
+              <th>Intrinsic RDF / OWL / SHACL Capability</th>
+              <th>Modern Neo4j 5.26 Capability</th>
+              <th>RWDKN v1 Defect → v2 Remediation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Class Subsumption &amp; Entity Typing</strong><br/><small>(<code>Drug</code> vs. <code>ChemicalEntity</code>)</small></td>
+              <td><strong>Formal Upward Subsumption.</strong> <code>biolink:Drug rdfs:subClassOf biolink:ChemicalEntity</code> entails <code>Drug → ChemicalEntity</code> (though not downward <code>ChemicalEntity → Drug</code>).</td>
+              <td><strong>Multi-Label Nodes.</strong> Nodes can carry both specific and ancestor labels (<code>:Drug:MolecularMixture:ChemicalEntity</code>) materialized at ingest.</td>
+              <td><strong>Fixed in <code>export_kgx.py</code> &amp; <code>load_kgx_to_neo4j.py</code>:</strong> Replaced first-seen-wins deduplication with order-independent <code>reconcile_node_records()</code> and ancestor label expansion.</td>
+            </tr>
+            <tr>
+              <td><strong>2. Multi-Hop Taxonomies</strong><br/><small>(<code>MESH:M0160181</code> → Xultophy)</small></td>
+              <td><strong>Arbitrary-Depth Property Paths.</strong> <code>rdfs:subClassOf+</code> traverses multi-hop hierarchies natively.</td>
+              <td><strong>GQL Quantified Relationships.</strong> Supports <code>-[:SUBCLASS_OF]-&gt;*</code> and <code>-[:SUBCLASS_OF]-&gt;+</code> with inline pruning predicates.</td>
+              <td><strong>Fixed in <code>cypher_templates.py</code> &amp; <code>query_app.py</code>:</strong> Replaced artificial 1-hop bound <code>[:SUBCLASS_OF*0..1]</code> with <code>-[:SUBCLASS_OF]-&gt;*</code>, restoring 2-hop drug Xultophy (<code>RXCUI:1727493</code>).</td>
+            </tr>
+            <tr>
+              <td><strong>3. Abstract Parent Classes</strong><br/><small>(<code>DiseaseOrPhenotypicFeature</code>)</small></td>
+              <td><strong>Automatic RDFS Entailment.</strong> <code>sh:class biolink:DiseaseOrPhenotypicFeature</code> automatically covers all 193 child nodes.</td>
+              <td><strong>Dynamic Node Labels.</strong> Supports <code>(o:$($object_labels))</code> or centralized label union generation.</td>
+              <td><strong>Fixed in <code>semantic_query_planner.py</code>:</strong> Centralized <code>expand_biolink_class_closure("DiseaseOrPhenotypicFeature")</code> so templates derive labels from a single hierarchy.</td>
+            </tr>
+            <tr>
+              <td><strong>4. Predicate Hierarchy &amp; Dynamic Types</strong><br/><small>(Semaglutide → Nausea)</small></td>
+              <td><strong>Native <code>rdfs:subPropertyOf</code>.</strong> Querying <code>biolink:related_to</code> automatically entails <code>affects</code>, <code>associated_with</code>, and <code>has_adverse_event</code>.</td>
+              <td><strong>Dynamic Relationship Types.</strong> Neo4j 5.26+ supports <code>[r:$($rel_types)]</code> parameterized from an application-computed closure list.</td>
+              <td><strong>Fixed in <code>semantic_query_planner.py</code>:</strong> Added <code>expand_biolink_predicate_closure("biolink:related_to")</code> (including <code>RELATED_TO</code>) and dynamic <code>[r:$($rel_types)]</code> support, recovering <code>PUBMED:29713961...f51c</code>.</td>
+            </tr>
+            <tr>
+              <td><strong>5. Clinical Rule &amp; Regimen Integrity (CQ-5)</strong></td>
+              <td><strong>Declarative SHACL Shapes &amp; <code>sh:TripleRule</code>.</strong> Enforces <code>sh:minCount 1</code>, <code>sh:in</code> enums, and infers <code>rwdkn:isMonotherapy</code> in 50 lines of Turtle.</td>
+              <td><strong>Mandatory <code>MATCH</code> + Native Constraints.</strong> Enforces <code>IS UNIQUE</code> in CE (plus property existence/types &amp; Graph Types in Enterprise Edition).</td>
+              <td><strong>Fixed in <code>load_kgx_to_neo4j.py</code>:</strong> Enforced mandatory <code>MATCH (a:Association)</code> prior to <code>MERGE (g:RegimenChoiceGroup)</code> with post-load 0-orphan assertions.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Executive Recommendation Banner -->
+      <div class="callout callout-success" style="margin-top: 1.5rem;">
+        <h3 style="color: var(--accent-emerald); margin-bottom: 0.35rem;">Architectural Conclusion: Complementary Roles of RDF/OWL/SHACL and Modernized Neo4j 5.26</h3>
+        <p style="color: var(--text-secondary);">
+          Separating <strong>intrinsic semantic guarantees</strong> from <strong>remediated v1 implementation defects</strong> sharpens our architectural conclusion. Modernizing our Neo4j 5.26 implementation—using deterministic node reconciliation, centralized Biolink class/predicate closures in <code>semantic_query_planner.py</code>, GQL quantified relationships (<code>-[:SUBCLASS_OF]-&gt;*</code>), dynamic type expressions (<code>[r:$($rel_types)]</code>), and mandatory <code>MATCH</code> semantics—eliminates the four recall/orphan bugs identified in v1. At the same time, <strong>RDF / OWL 2 / SHACL retains a genuine architectural advantage as the authoritative semantic contract layer</strong>: class and property subsumption (<code>rdfs:subClassOf</code>, <code>rdfs:subPropertyOf</code>), closed-world shape validation (<code>sh:NodeShape</code>), and conditional rule inference (<code>sh:TripleRule</code>) are declared once in portable W3C standards rather than maintained in ~2,940 LOC of custom Python projection and query-planning code.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.getElementById('themeBtn');
+      if (html.getAttribute('data-theme') === 'light') {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '☀️ Light Mode';
+      } else {
+        html.setAttribute('data-theme', 'light');
+        btn.textContent = '🌙 Dark Mode';
+      }
+    }
+
+    function setSimMode(mode) {
+      const container = document.getElementById('simDiagram2');
+      const btnRdf = document.getElementById('btnRdfSim');
+      const btnLpg = document.getElementById('btnLpgSim');
+      const status = document.getElementById('simStatusText');
+
+      if (mode === 'neo4j') {
+        container.classList.remove('mode-rdf');
+        container.classList.add('mode-neo4j');
+        btnRdf.classList.remove('active-rdf');
+        btnLpg.classList.add('active-lpg');
+        status.innerHTML = '⚠️ Currently viewing: <strong>v1 Neo4j Template Defect ([:SUBCLASS_OF*0..1])</strong> — 2-hop drug <code>RXCUI:1727493</code> (Xultophy) was dropped in v1; remediated in v2 using GQL quantified relationship <code>-[:SUBCLASS_OF]-&gt;*</code>!';
+      } else {
+        container.classList.remove('mode-neo4j');
+        container.classList.add('mode-rdf');
+        btnLpg.classList.remove('active-lpg');
+        btnRdf.classList.add('active-rdf');
+        status.innerHTML = '✅ Currently viewing: <strong>RDF / OWL + Remediated v2 Neo4j (-[:SUBCLASS_OF]-&gt;*)</strong> — Full transitive closure (193 outcome nodes &amp; all 4 GLP-1 drugs retrieved)';
+      }
+    }
+  </script>
+</body>
+</html>
