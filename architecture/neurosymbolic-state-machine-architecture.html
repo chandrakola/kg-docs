@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REAL-KG · Beyond the Waterfall: Neurosymbolic State-Machine Architecture</title>
+  <meta name="description" content="Architectural Blueprint for Moving Beyond the Waterfall in REAL-KG / RWDKN using Frank Coyle's Ontologies for Agentic Systems, Hierarchical Inner Loops, and Recursive Break Control.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Light theme (Clinical Sapphire & Emerald) */
+      --bg-canvas: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+      
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #94a3b8;
+      
+      --primary: #1e3a8a;       /* Deep NLM Navy */
+      --primary-light: #3b82f6; /* Blue 500 */
+      --primary-subtle: #eff6ff;
+      --accent: #0d9488;        /* Clinical Teal */
+      --accent-subtle: #f0fdfa;
+      --warning: #d97706;
+      --warning-subtle: #fffbeb;
+      --purple: #7c3aed;
+      --purple-subtle: #faf5ff;
+      --danger: #dc2626;
+      --danger-subtle: #fef2f2;
+      --success: #16a34a;
+      --success-subtle: #f0fdf4;
+      
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-canvas: #090d16;
+      --bg-surface: #111827;
+      --bg-subtle: #1e293b;
+      --border-subtle: #243044;
+      --border-strong: #334155;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      
+      --primary: #3b82f6;
+      --primary-light: #60a5fa;
+      --primary-subtle: #172554;
+      --accent: #14b8a6;
+      --accent-subtle: #134e4a;
+      --warning: #f59e0b;
+      --warning-subtle: #451a03;
+      --purple: #a855f7;
+      --purple-subtle: #3b0764;
+      --danger: #ef4444;
+      --danger-subtle: #450a0a;
+      --success: #22c55e;
+      --success-subtle: #052e16;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Scroll progress bar */
+    .progress-bar-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      z-index: 100;
+      background: transparent;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary-light), var(--accent));
+      transition: width 0.1s ease;
+    }
+
+    /* Top Navigation Bar */
+    header.top-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: var(--transition);
+    }
+    [data-theme="dark"] header.top-header {
+      background: rgba(17, 24, 39, 0.85);
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nih-badge {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: 0.25rem 0.65rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .timestamp-badge {
+      background: var(--accent-subtle);
+      color: var(--accent);
+      padding: 0.25rem 0.65rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .theme-toggle-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.45rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition);
+    }
+    .theme-toggle-btn:hover {
+      background: var(--border-subtle);
+      border-color: var(--border-strong);
+    }
+
+    /* Main Container with Sidebar */
+    .app-layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2.5rem;
+      padding: 2rem 1.5rem 5rem 1.5rem;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      position: sticky;
+      top: 5rem;
+      height: calc(100vh - 7rem);
+      overflow-y: auto;
+      padding-right: 1rem;
+    }
+
+    .toc-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-faint);
+      margin-bottom: 0.75rem;
+      font-weight: 700;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .toc-link {
+      display: block;
+      padding: 0.45rem 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      border-left: 2px solid transparent;
+      transition: var(--transition);
+    }
+
+    .toc-link:hover {
+      color: var(--primary);
+      background: var(--primary-subtle);
+    }
+
+    .toc-link.active {
+      color: var(--primary);
+      background: var(--primary-subtle);
+      border-left-color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Content Area */
+    main.content {
+      min-width: 0;
+    }
+
+    /* Hero Header */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.08) 0%, rgba(13, 148, 136, 0.08) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .hero-banner {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(20, 184, 166, 0.08) 100%);
+      border-color: var(--border-strong);
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(90deg, var(--text-main), var(--primary-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 950px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .hero-meta-label {
+      font-size: 0.75rem;
+      color: var(--text-faint);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .hero-meta-val {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 0.15rem;
+    }
+
+    /* Section Styling */
+    section {
+      margin-bottom: 3.5rem;
+      scroll-margin-top: 5rem;
+    }
+
+    .section-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .section-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .section-desc {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* Cards & Containers */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
+      transition: var(--transition);
+    }
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Callout Alerts */
+    .alert {
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      border: 1px solid transparent;
+    }
+    .alert-primary {
+      background: var(--primary-subtle);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: var(--text-main);
+    }
+    .alert-accent {
+      background: var(--accent-subtle);
+      border-color: rgba(20, 184, 166, 0.3);
+      color: var(--text-main);
+    }
+    .alert-warning {
+      background: var(--warning-subtle);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--text-main);
+    }
+
+    /* Comparison Tabs for The 3 Paths */
+    .path-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.5rem;
+    }
+
+    .path-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.65rem 1.25rem;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition);
+    }
+    .path-tab-btn:hover {
+      color: var(--text-main);
+      background: var(--bg-subtle);
+    }
+    .path-tab-btn.active {
+      color: var(--primary);
+      background: var(--primary-subtle);
+      font-weight: 700;
+    }
+    .path-tab-btn .badge-recommended {
+      background: var(--accent);
+      color: #ffffff;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .path-pane {
+      display: none;
+    }
+    .path-pane.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 1.5rem;
+      background: var(--bg-surface);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.85rem 1.15rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    th {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: rgba(59, 130, 246, 0.02);
+    }
+    [data-theme="dark"] tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Interactive In-The-Loop Simulation Widget */
+    .sim-widget {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 2rem;
+    }
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .sim-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .sim-step-indicator {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .sim-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border-strong);
+      transition: var(--transition);
+    }
+    .sim-dot.active {
+      background: var(--accent);
+      transform: scale(1.25);
+    }
+
+    .sim-stage-box {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .sim-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 0.55rem 1.15rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--primary-light);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: var(--primary);
+    }
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border-strong);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: var(--bg-subtle);
+    }
+
+    /* Code Blocks */
+    .code-wrapper {
+      position: relative;
+      margin: 1.25rem 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+    .code-header {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+    }
+    .copy-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .copy-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+    pre code {
+      display: block;
+      padding: 1.25rem;
+      background: #0b0f19;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-success { background: var(--success-subtle); color: var(--success); }
+    .badge-danger { background: var(--danger-subtle); color: var(--danger); }
+    .badge-warning { background: var(--warning-subtle); color: var(--warning); }
+    .badge-primary { background: var(--primary-subtle); color: var(--primary); }
+
+    /* Interactive HITL Preview Table */
+    .hitl-mockup {
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-top: 1.25rem;
+    }
+    .hitl-toolbar {
+      background: var(--bg-subtle);
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.85rem;
+    }
+    .hitl-row {
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 140px;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    .hitl-row:last-child {
+      border-bottom: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+      aside.sidebar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- Scroll Progress -->
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <span class="nih-badge">NLM · NIH</span>
+        <div class="brand-title">REAL-KG Architecture Briefing</div>
+        <div class="timestamp-badge">
+          <span>🕒</span>
+          <span>Updated: October 14, 2026 • 21:35 EDT</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()">
+          <span id="themeIcon">☀️</span>
+          <span id="themeText">Light Mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Layout -->
+  <div class="app-layout">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="toc-title">Table of Contents</div>
+      <ul class="toc-list" id="tocList">
+        <li><a href="#executive-summary" class="toc-link active">Executive Summary</a></li>
+        <li><a href="#coyle-principles" class="toc-link">Frank Coyle's 5 Principles</a></li>
+        <li><a href="#path-comparison" class="toc-link">Evaluating the 3 Paths</a></li>
+        <li><a href="#hierarchical-loop" class="toc-link">Hierarchical Loop (Clear Diagrams)</a></li>
+        <li><a href="#recommended-architecture" class="toc-link">DB State-Machine Specification</a></li>
+        <li><a href="#in-the-loop-sim" class="toc-link">In-The-Loop Simulation</a></li>
+        <li><a href="#hitl-workbench" class="toc-link">Operationalizing HITL Review</a></li>
+        <li><a href="#cypher-guard" class="toc-link">Ontology Cypher Guard (NLQ)</a></li>
+        <li><a href="#roadmap" class="toc-link">Phased Implementation</a></li>
+      </ul>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="content">
+
+      <!-- Hero Banner -->
+      <section class="hero-banner">
+        <div class="hero-pill">
+          <span>🧠 Neurosymbolic Architecture</span>
+          <span>•</span>
+          <span>Frank Coyle Reference</span>
+          <span>•</span>
+          <span>v2.1 Recursive Loop</span>
+        </div>
+        <h1 class="hero-title">Moving Beyond the Waterfall: Neurosymbolic State-Machine Governance</h1>
+        <p class="hero-subtitle">
+          Operationalizing Frank Coyle's (UC Berkeley) <em>"Ontologies for Agentic Systems"</em> through <strong>Hierarchical Inner Loops</strong> and a <strong>Recursive Outer Reflection Loop with Circuit Breakers</strong> to guarantee clinical truth in REAL-KG / RWDKN.
+        </p>
+
+        <div class="hero-meta-grid">
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Selected Strategy</span>
+            <span class="hero-meta-val" style="color: var(--accent);">Path 3: DB State-Machine</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Control Pattern</span>
+            <span class="hero-meta-val" style="color: var(--primary-light);">Hierarchical Recursion with Break</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Last Updated</span>
+            <span class="hero-meta-val">Oct 14, 2026 • 21:35 EDT</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Primary Gating Store</span>
+            <span class="hero-meta-val">PostgreSQL Audit Ledger</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: Executive Summary -->
+      <section id="executive-summary">
+        <div class="section-header">
+          <span class="section-tag">Overview</span>
+          <h2 class="section-title">1. Executive Summary & Problem Context</h2>
+          <p class="section-desc">The structural limits of the current file-based waterfall pipeline.</p>
+        </div>
+
+        <div class="card">
+          <p style="margin-bottom: 1rem;">
+            Historically, <code>rwdkn-data-pipeline</code> evolved as a sequential cascade of isolated CLI scripts:
+          </p>
+          <div class="mermaid" style="margin-bottom: 1.25rem;">
+            flowchart LR
+              S1[Stage 1: source-nexus] -->|Raw SPL/XML| S2[Stage 2: assertion-engine]
+              S2 -->|Raw JSON Triples| S3[Stage 3: concept-align]
+              S3 -->|Normalized JSON| S4[Stage 4: biolink-bridge]
+              S4 -->|KGX TSVs| S5[Stage 5: quality-guardian]
+              S5 -->|Post-Hoc Gate| S6[(Neo4j & Fuseki)]
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">
+            While this batch architecture provided initial debugging checkpoints, it creates critical limitations:
+          </p>
+          <ul style="margin: 0.75rem 0 0.75rem 1.5rem; color: var(--text-muted); font-size: 0.95rem;">
+            <li><strong>Post-Hoc Validation Discard:</strong> When a triple fails domain/range rules in Stage 5, it is silently dropped hours later after the LLM prompt context has already terminated.</li>
+            <li><strong>All-or-Nothing Ingestion Latency:</strong> Ingesting a single new drug label or five PubMed abstracts requires executing the full batch cascade.</li>
+            <li><strong>Unverified Graph Leakage:</strong> Without deterministic state staging, unverified candidate assertions risk polluting production query stores.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Section 2: Frank Coyle's 5 Principles -->
+      <section id="coyle-principles">
+        <div class="section-header">
+          <span class="section-tag">Theoretical Foundation</span>
+          <h2 class="section-title">2. Frank Coyle's 5 Core Principles</h2>
+          <p class="section-desc">Key takeaways from UC Berkeley's AI Engineer World's Fair 2026 Presentation.</p>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Principle</th>
+                <th>Core Concept</th>
+                <th>Application to REAL-KG</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Neurosymbolic Dual-Process</strong></td>
+                <td>System 1 (LLM: fast, generative) paired with System 2 (Ontology: slow, formal, deductive).</td>
+                <td>LLM proposes candidate assertions; Biolink / UMLS enforces deterministic boundaries.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Structural $\ne$ Semantic Validation</strong></td>
+                <td>Pydantic validates payload syntax/types; Ontologies validate real-world domain truth.</td>
+                <td><code>(Metformin)-[:treats]->(Nausea)</code> is valid JSON, but violates adverse reaction ontology semantics.</td>
+              </tr>
+              <tr>
+                <td><strong>3. In-The-Loop Reflection</strong></td>
+                <td>Ontology validation executes immediately inside the generation loop, enabling LLM self-correction.</td>
+                <td>Evaluate domain/range in-memory; prompt the LLM with the exact axiom violation while document context is hot.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Delay of Side-Effects & Quarantine</strong></td>
+                <td>Unverified agent actions must never commit side-effects directly to live systems.</td>
+                <td>Stage assertions in PostgreSQL. Route borderline triples to <code>/demo/triples/</code> for HITL clinical signoff.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Ontology-Guided Querying</strong></td>
+                <td>NLQ-to-graph translation must be bounded by the ontology metamodel.</td>
+                <td>Pre-flight Cypher AST validation against Biolink schema prevents reversed edges and query hallucination.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 3: Evaluating the 3 Paths -->
+      <section id="path-comparison">
+        <div class="section-header">
+          <span class="section-tag">Comparative Architectural Analysis</span>
+          <h2 class="section-title">3. Evaluating the Three Evolution Paths</h2>
+          <p class="section-desc">Comparing Airflow, Event-Driven Streaming, and PostgreSQL State-Machine.</p>
+        </div>
+
+        <!-- Interactive Path Tabs -->
+        <div class="path-tabs">
+          <button class="path-tab-btn" onclick="switchPath(1)">
+            <span>Path 1: Airflow Workflow DAG</span>
+          </button>
+          <button class="path-tab-btn" onclick="switchPath(2)">
+            <span>Path 2: Event-Driven Queue</span>
+          </button>
+          <button class="path-tab-btn active" onclick="switchPath(3)">
+            <span>Path 3: DB State-Machine</span>
+            <span class="badge-recommended">Recommended</span>
+          </button>
+        </div>
+
+        <!-- Path 1 Pane -->
+        <div class="path-pane" id="pathPane1">
+          <div class="card">
+            <h3 style="margin-bottom: 0.5rem; color: var(--primary-light);">Path 1: Airflow Workflow DAG (Orchestrated Batch)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+              Replaces shell scripts with an Apache Airflow DAG in <code>platform-services/airflow</code>.
+            </p>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr><th>Aspect</th><th>Rating</th><th>Analysis</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>In-The-Loop Reflection</td><td><span class="badge badge-danger">Poor</span></td><td>Airflow runs coarse tasks; cannot pause a task to prompt an LLM on an individual sentence.</td></tr>
+                  <tr><td>Delay of Side-Effects</td><td><span class="badge badge-warning">Coarse</span></td><td>Gating only occurs at the end of the batch (hours later).</td></tr>
+                  <tr><td>HITL Clinical Review</td><td><span class="badge badge-danger">Awkward</span></td><td>Airflow DAGs are meant to complete unattended; human pauses stall the batch.</td></tr>
+                  <tr><td>Refactoring Scope</td><td><span class="badge badge-success">Low</span></td><td>Simply wraps existing CLI scripts into Python operators.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="alert alert-warning">
+              <strong>Verdict:</strong> Automates the batch plumbing, but completely fails to deliver Frank Coyle's neurosymbolic in-the-loop validation.
+            </div>
+          </div>
+        </div>
+
+        <!-- Path 2 Pane -->
+        <div class="path-pane" id="pathPane2">
+          <div class="card">
+            <h3 style="margin-bottom: 0.5rem; color: var(--primary-light);">Path 2: Event-Driven Streaming (RabbitMQ + S3 / KEDA)</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+              Converts pipeline stages into distributed microservice workers consuming AMQP message queues.
+            </p>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr><th>Aspect</th><th>Rating</th><th>Analysis</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>In-The-Loop Reflection</td><td><span class="badge badge-warning">Complex</span></td><td>Requires coordinating multi-turn LLM reflections over distributed message brokers.</td></tr>
+                  <tr><td>Delay of Side-Effects</td><td><span class="badge badge-warning">Fragile</span></td><td>Requires distributed transaction compensation if downstream stages fail.</td></tr>
+                  <tr><td>HITL Clinical Review</td><td><span class="badge badge-danger">Difficult</span></td><td>Message queues are ephemeral; clinical auditing requires external persistence.</td></tr>
+                  <tr><td>Refactoring Scope</td><td><span class="badge badge-danger">Very High</span></td><td>Demands RabbitMQ cluster, KEDA scaling, dead-letter exchanges, and distributed tracing.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="alert alert-warning">
+              <strong>Verdict:</strong> An over-engineered operational distraction that solves streaming latency without solving clinical quality.
+            </div>
+          </div>
+        </div>
+
+        <!-- Path 3 Pane (Recommended) -->
+        <div class="path-pane active" id="pathPane3">
+          <div class="card" style="border: 2px solid var(--accent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h3 style="color: var(--accent);">Path 3: Database State-Machine & Audit Ledger (RECOMMENDED)</h3>
+              <span class="badge badge-success">Optimal Neurosymbolic Fit</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+              Uses PostgreSQL as an immutable clinical state ledger and HITL quarantine buffer, running ontology checks inside the extraction worker loop.
+            </p>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr><th>Aspect</th><th>Rating</th><th>Why Path 3 Wins</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>In-The-Loop Reflection</td><td><span class="badge badge-success">Native</span></td><td>Worker validates candidate triples in-memory and prompts for reflection before DB write.</td></tr>
+                  <tr><td>Delay of Side-Effects</td><td><span class="badge badge-success">Guaranteed</span></td><td>Neo4j and Fuseki only ingest <code>APPROVED</code> triples; unverified assertions cannot leak.</td></tr>
+                  <tr><td>HITL Clinical Review</td><td><span class="badge badge-success">Direct</span></td><td>Quarantined assertions directly power the existing <code>/demo/triples/</code> review workbench.</td></tr>
+                  <tr><td>Refactoring Scope</td><td><span class="badge badge-success">Minimal</span></td><td>Reuses existing PostgreSQL instance in <code>shared-infra</code> and existing LinkML SDKs.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="alert alert-accent">
+              <strong>Verdict:</strong> The decisive winner. It implements Coyle's neurosymbolic guardrails with zero new infrastructure and minimal refactoring risk.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: The Hierarchical Loop Architecture (CLEAR DIAGRAMS) -->
+      <section id="hierarchical-loop">
+        <div class="section-header">
+          <span class="section-tag">Core Control Pattern</span>
+          <h2 class="section-title">4. Hierarchical Loop Architecture: Inner Loops with Recursive Break</h2>
+          <p class="section-desc">Statement-level granularity with local stage validation, global ontology evaluation, and bounded recursion.</p>
+        </div>
+
+        <!-- Primary Flowchart Diagram -->
+        <div class="card" style="border: 2px solid var(--primary-light);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1.15rem; color: var(--primary-light);">Figure 4.1: Statement-Level Recursive Control Loop with Circuit Breakers</h3>
+            <span class="badge badge-primary">Recursion Depth &le; 1</span>
+          </div>
+
+          <div class="mermaid">
+            flowchart TD
+              Start([Next Clinical Statement / Sentence]) --> OuterInit[Initialize Outer Loop: depth = 0]
+              OuterInit --> S1_Box
+
+              subgraph S1_Box [Stage 1: assertion-engine]
+                direction TB
+                LLM[LLM Candidate SPO Extraction]
+                L1_Gate{Inner Loop 1:<br/>JSON Syntax & Verbatim Quote?}
+                LLM --> L1_Gate
+                L1_Gate -->|Format/Quote Error| LLM
+                L1_Gate -->|Pass| S1_Out[Raw Candidate Triples]
+              end
+
+              subgraph S2_Box [Stage 2: concept-align]
+                direction TB
+                Ground[RxNorm / UMLS / SapBERT Grounding]
+                L2_Gate{Inner Loop 2:<br/>Entity Disambiguation & Threshold?}
+                Ground --> L2_Gate
+                L2_Gate -->|Ambiguous Sense| Ground
+                L2_Gate -->|Pass| S2_Out[Grounded Triples with CUIs & TUIs]
+              end
+
+              subgraph S3_Box [Stage 3: quality-guardian]
+                direction TB
+                OntologyGate{Ontology Axiom Verification:<br/>Domain/Range Match?<br/>Section Disjointness?<br/>CUI Self-Loops? Blocked TUIs?}
+              end
+
+              S1_Out --> S2_Box
+              S2_Out --> S3_Box
+
+              OntologyGate -->|Pass: All Axioms Valid| BreakValid[BREAK: Commit 'SEMANTICALLY_VALID'<br/>Advance to Next Statement]
+              
+              OntologyGate -->|Violation Detected| DepthCheck{Recursion Circuit Breaker:<br/>depth &lt; MAX_DEPTH?}
+              
+              DepthCheck -->|Yes: depth == 0| RecurseFeedback[RECURSE: Put Statement back to Stage 1<br/>Pass Axiom Feedback Diagnostic<br/>depth = depth + 1]
+              RecurseFeedback --> S1_Box
+
+              DepthCheck -->|No: depth &gt;= MAX_DEPTH| BreakQuarantine[BREAK: Commit 'QUARANTINED_HITL'<br/>Delay Side-Effects to /demo/triples/<br/>Advance to Next Statement]
+          </div>
+          
+          <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm); margin-top: 1.25rem;">
+            <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+              <strong>How it works:</strong> Each statement enters Stage 1. <strong>Inner Loop 1</strong> guarantees syntactic and verbatim quote integrity. <strong>Inner Loop 2</strong> in Stage 2 guarantees entity resolution. <strong>Stage 3</strong> acts as the formal ontology verifier. If Stage 3 finds an axiom violation, the statement <strong>recurses back to Stage 1</strong> with explicit feedback data. If it fails a second time, the <strong>circuit breaker</strong> breaks recursion and routes the triple to the HITL quarantine layer in <code>/demo/triples/</code>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Sequence Diagram -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1.15rem; color: var(--accent);">Figure 4.2: Inter-Stage Execution & Feedback Sequence</h3>
+            <span class="badge badge-success">Single-Statement Lifecycle</span>
+          </div>
+
+          <div class="mermaid">
+            sequenceDiagram
+              autonumber
+              actor Pipeline as Statement Dispatcher
+              participant S1 as Stage 1: assertion-engine
+              participant S2 as Stage 2: concept-align
+              participant S3 as Stage 3: quality-guardian
+              participant PG as PostgreSQL State Ledger
+              participant HITL as /demo/triples/ (HITL Review)
+
+              Pipeline->>S1: process_statement(text, section, depth=0)
+              Note over S1: Inner Loop 1: Verbatim quote & JSON schema check
+              S1->>S2: raw_triples [Metformin, treats, AMPK]
+              Note over S2: Inner Loop 2: Resolves RXNORM:6809 & HGNC:9376 (TUI T028 Gene)
+              S2->>S3: grounded_triples with CUIs & TUIs
+              Note over S3: Axiom Check: 'biolink:treats' requires Disease, got Gene (T028)
+              
+              alt Axiom Violation & depth < MAX_DEPTH
+                S3-->>S1: RECURSE with Feedback Diagnostic: "AMPK is a Gene (T028), cannot be treated"
+                Note over S1: LLM Turn 2: Rewrites predicate to 'biolink:interacts_with'
+                S1->>S2: raw_triples [Metformin, interacts_with, AMPK]
+                S2->>S3: grounded_triples with updated predicate
+                Note over S3: Axiom Check: 'interacts_with' between Drug & Gene is VALID
+                S3->>PG: INSERT status = 'SEMANTICALLY_VALID'
+                PG-->>Pipeline: Statement Complete (Advanced)
+              else Axiom Violation & depth >= MAX_DEPTH
+                S3->>PG: INSERT status = 'QUARANTINED_HITL' (Reason: TUI_MISMATCH)
+                PG->>HITL: Expose in Triple Audit Explorer for Clinical Review
+                PG-->>Pipeline: Statement Complete (Quarantined)
+              end
+          </div>
+        </div>
+
+        <!-- Python Algorithmic Pattern -->
+        <div class="card">
+          <h3 style="margin-bottom: 0.75rem;">Python Implementation Pattern: Recursion with Break</h3>
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>orchestration/hierarchical_statement_loop.py</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy Python</button>
+            </div>
+            <pre><code>MAX_RECURSION_DEPTH = 1  # 1 initial pass + 1 reflective retry turn
+
+def process_statement(statement_context: dict, feedback: dict = None, depth: int = 0):
+    """
+    Hierarchical Statement Processor:
+    - Inner loops guarantee local syntactic & normalization correctness.
+    - Outer loop guarantees global ontological truth with recursive circuit breaker.
+    """
+    # -------------------------------------------------------------------
+    # STAGE 1: assertion-engine (Inner Loop 1: Syntax & Quote Match)
+    # -------------------------------------------------------------------
+    candidate_triples = assertion_engine_inner_loop(
+        statement=statement_context["text"],
+        section=statement_context["section"],
+        feedback=feedback  # Contains diagnostic if depth > 0
+    )
+    if not candidate_triples:
+        return {"status": "NO_ASSERTIONS"}
+
+    # -------------------------------------------------------------------
+    # STAGE 2: concept-align (Inner Loop 2: Entity Disambiguation)
+    # -------------------------------------------------------------------
+    grounded_triples = concept_align_inner_loop(candidate_triples)
+
+    # -------------------------------------------------------------------
+    # STAGE 3: quality-guardian (Ontology Axiom Verification)
+    # -------------------------------------------------------------------
+    audit_results = quality_guardian_verify(grounded_triples, statement_context)
+
+    # ===================================================================
+    # THE OUTER LOOP: BREAK OR RECURSE
+    # ===================================================================
+    if audit_results.is_valid:
+        # BREAK 1: SUCCESS -> Commit and move to next statement
+        save_to_postgres(grounded_triples, status="SEMANTICALLY_VALID")
+        return {"status": "SUCCESS", "depth": depth}
+
+    # If ontology violation occurred:
+    if depth < MAX_RECURSION_DEPTH:
+        # RECURSE: Feed the exact ontology diagnostic back to Stage 1
+        reflection_feedback = {
+            "prior_attempt": candidate_triples,
+            "violations": audit_results.violations,
+            "instruction": audit_results.correction_advice
+        }
+        return process_statement(statement_context, feedback=reflection_feedback, depth=depth + 1)
+    else:
+        # BREAK 2: CIRCUIT BREAKER -> Delay side-effects (HITL Quarantine)
+        save_to_postgres(grounded_triples, status="QUARANTINED_HITL", violations=audit_results.violations)
+        return {"status": "QUARANTINED", "reason": audit_results.violations}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: DB State-Machine Specification -->
+      <section id="recommended-architecture">
+        <div class="section-header">
+          <span class="section-tag">Database Architecture</span>
+          <h2 class="section-title">5. Database State-Machine & Audit Ledger</h2>
+          <p class="section-desc">State transitions, schema extensions, and live graph isolation.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 0.75rem;">Figure 5.1: Assertion State-Machine Lifecycle</h3>
+          <div class="mermaid">
+            stateDiagram-v2
+              [*] --> DRAFT_EXTRACTED: Stage 1 Raw LLM Proposal
+              DRAFT_EXTRACTED --> ONTOLOGY_EVALUATION: Stage 2 Resolves CUIs and TUIs
+              
+              state In_Flight_Outer_Loop {
+                ONTOLOGY_EVALUATION --> RECURSIVE_RETRY: Axiom Violation depth 0
+                RECURSIVE_RETRY --> DRAFT_EXTRACTED: Recurse with Feedback Data
+              }
+
+              ONTOLOGY_EVALUATION --> SEMANTICALLY_VALID: Passes Axioms - Break 1
+              ONTOLOGY_EVALUATION --> QUARANTINED_HITL: Fails Turn 2 - Break 2 Circuit Breaker
+
+              QUARANTINED_HITL --> APPROVED: Clinical Informatician Signoff
+              QUARANTINED_HITL --> REJECTED: Clinical Informatician Discard
+
+              SEMANTICALLY_VALID --> SYNC_PENDING
+              APPROVED --> SYNC_PENDING
+
+              SYNC_PENDING --> SYNCED_TO_GRAPH: Loaded into Neo4j and Fuseki
+              SYNCED_TO_GRAPH --> [*]
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 0.75rem;">PostgreSQL Schema Extension</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Extends existing <code>pipeline_assertions</code> to track lifecycle states, ontological violation payloads, and audit sign-offs:
+          </p>
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>db/migrations/20261014_assertion_lifecycle.sql</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy SQL</button>
+            </div>
+            <pre><code>ALTER TABLE pipeline_assertions
+  ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(32) NOT NULL DEFAULT 'DRAFT_EXTRACTED',
+  ADD COLUMN IF NOT EXISTS ontology_violations JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS recursion_depth INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS grounding_score NUMERIC(4,3),
+  ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+-- Constrain lifecycle transitions
+ALTER TABLE pipeline_assertions
+  ADD CONSTRAINT chk_lifecycle_status CHECK (
+    lifecycle_status IN (
+      'DRAFT_EXTRACTED',
+      'ONTOLOGY_VALIDATED',
+      'QUARANTINED_HITL',
+      'APPROVED',
+      'REJECTED',
+      'SYNCED_TO_GRAPH'
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS idx_assertions_lifecycle 
+  ON pipeline_assertions(lifecycle_status, grounding_score);</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 6: In-The-Loop Simulation -->
+      <section id="in-the-loop-sim">
+        <div class="section-header">
+          <span class="section-tag">Interactive Demonstration</span>
+          <h2 class="section-title">6. In-The-Loop Simulation: Hierarchical Recursion in Action</h2>
+          <p class="section-desc">Experience how Inner Loops in Stage 1 & 2 feed Stage 3, triggering a recursive reflection turn.</p>
+        </div>
+
+        <div class="sim-widget">
+          <div class="sim-header">
+            <div class="sim-title">
+              <span>⚡</span>
+              <span id="simStepTitle">Step 1: Clinical Input Sentence</span>
+            </div>
+            <div class="sim-step-indicator">
+              <div class="sim-dot active" id="dot1"></div>
+              <div class="sim-dot" id="dot2"></div>
+              <div class="sim-dot" id="dot3"></div>
+              <div class="sim-dot" id="dot4"></div>
+              <div class="sim-dot" id="dot5"></div>
+              <div class="sim-dot" id="dot6"></div>
+            </div>
+          </div>
+
+          <div class="sim-stage-box" id="simContent">
+            <!-- Dynamic Content Injected Here -->
+          </div>
+
+          <div class="sim-controls">
+            <button class="btn btn-outline" onclick="resetSim()">↺ Reset Simulation</button>
+            <button class="btn btn-primary" id="simNextBtn" onclick="nextSimStep()">Next Step →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 7: Operationalizing HITL Review -->
+      <section id="hitl-workbench">
+        <div class="section-header">
+          <span class="section-tag">Clinical Governance</span>
+          <h2 class="section-title">7. Operationalizing the HITL Quarantine in /demo/triples/</h2>
+          <p class="section-desc">Transforming the Triple Audit Explorer into an actionable clinical approval workbench.</p>
+        </div>
+
+        <div class="card">
+          <p style="color: var(--text-muted); margin-bottom: 1rem;">
+            When recursion reaches <code>MAX_DEPTH</code>, assertions break to the <strong>HITL Quarantine Queue</strong>. Clinicians review assertions with one-click actions:
+          </p>
+
+          <div class="hitl-mockup">
+            <div class="hitl-toolbar">
+              <span style="font-weight: 700; color: var(--accent);">Queue: Quarantined Assertions (3 Pending Review)</span>
+              <span>Filter: <code>lifecycle_status = 'QUARANTINED_HITL'</code></span>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="hitl-row" id="hitlRow1">
+              <div>
+                <strong>Metformin $\rightarrow$ Lactic Acidosis</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Predicate: <code>biolink:treats</code> | Sec: BOXED WARNING</div>
+              </div>
+              <div>
+                <span class="badge badge-danger">FLAG_SECTION_MISMATCH</span>
+              </div>
+              <div>
+                <span style="font-family: var(--font-mono); font-size: 0.8rem;">Score: 0.89</span>
+              </div>
+              <div style="display: flex; gap: 0.35rem;">
+                <button class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="hitlAction(1, 'Fixed to has_adverse_event')">Correct</button>
+                <button class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--danger);" onclick="hitlAction(1, 'Rejected')">Reject</button>
+              </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="hitl-row" id="hitlRow2">
+              <div>
+                <strong>Semaglutide $\rightarrow$ Diabetic Retinopathy</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Predicate: <code>biolink:has_adverse_event</code> | Sec: ADVERSE REACTIONS</div>
+              </div>
+              <div>
+                <span class="badge badge-warning">FLAG_BORDERLINE_GROUNDING</span>
+              </div>
+              <div>
+                <span style="font-family: var(--font-mono); font-size: 0.8rem;">Score: 0.78</span>
+              </div>
+              <div style="display: flex; gap: 0.35rem;">
+                <button class="btn btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="hitlAction(2, 'Approved')">Approve</button>
+                <button class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--danger);" onclick="hitlAction(2, 'Rejected')">Reject</button>
+              </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="hitl-row" id="hitlRow3">
+              <div>
+                <strong>Aspirin $\rightarrow$ Acetylsalicylic Acid</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Predicate: <code>biolink:treats</code> | Sec: CLINICAL PHARM</div>
+              </div>
+              <div>
+                <span class="badge badge-danger">FLAG_CUI_SELF_LOOP</span>
+              </div>
+              <div>
+                <span style="font-family: var(--font-mono); font-size: 0.8rem;">RXCUI: 1191</span>
+              </div>
+              <div style="display: flex; gap: 0.35rem;">
+                <button class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--danger);" onclick="hitlAction(3, 'Rejected')">Reject</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: Cypher Guard -->
+      <section id="cypher-guard">
+        <div class="section-header">
+          <span class="section-tag">NLQ Guardrails</span>
+          <h2 class="section-title">8. Ontology-Constrained Cypher Guard for NLQ</h2>
+          <p class="section-desc">Principle 5: Pre-validating Cypher ASTs before database execution in query-app.</p>
+        </div>
+
+        <div class="card">
+          <p style="color: var(--text-muted); margin-bottom: 1rem;">
+            In <code>query-app/query_translator/cypher_generation.py</code>, LLM-generated Cypher is checked against the ontology metamodel before hitting Neo4j:
+          </p>
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span>query_translator/cypher_ontology_guard.py</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy Python</button>
+            </div>
+            <pre><code>def validate_cypher_ontology_ast(cypher_query: str) -> List[str]:
+    """Validate Cypher AST against Biolink domain/range constraints."""
+    errors = []
+    
+    # 1. Reverse Traversal Check
+    # (:Disease)-[:TREATS]->(:Drug) is semantically invalid
+    if re.search(r"\(:Disease[^)]*\)-\[:TREATS\]->\(:Drug", cypher_query):
+        errors.append(
+            "ONTOLOGY_DIRECTION_INVERTED: 'TREATS' must traverse from (:Drug) to (:Disease). "
+            "Please invert the relationship arrow."
+        )
+
+    # 2. Hallucinated Relationship Type Check
+    invalid_rels = {"CAUSES_SIDE_EFFECT", "MEDICATES", "DRUG_FOR"}
+    for rel in invalid_rels:
+        if f"[:{rel}]" in cypher_query:
+            errors.append(f"INVALID_BIOLINK_PREDICATE: '{rel}' does not exist in KG schema.")
+
+    return errors</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 9: Roadmap -->
+      <section id="roadmap">
+        <div class="section-header">
+          <span class="section-tag">Execution Plan</span>
+          <h2 class="section-title">9. Phased Implementation Roadmap</h2>
+          <p class="section-desc">A low-risk, 4-week rollout plan preserving existing production stability.</p>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>Timeline</th><th>Key Deliverables</th><th>Risk Profile</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Phase 1: DB State Ledger</strong></td>
+                <td>Week 1</td>
+                <td>Apply schema migration to <code>pipeline_assertions</code>; index state transitions.</td>
+                <td><span class="badge badge-success">Zero Risk</span> (Additive columns)</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 2: Hierarchical Control Loop</strong></td>
+                <td>Week 2</td>
+                <td>Implement <code>process_statement</code> recursion with break connecting Stages 1, 2, and 3.</td>
+                <td><span class="badge badge-success">Low Risk</span> (Scoped worker logic)</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 3: HITL Workbench</strong></td>
+                <td>Week 3</td>
+                <td>Expose quarantine REST endpoints in <code>rwdkn-service</code>; enable review in <code>/demo/triples/</code>.</td>
+                <td><span class="badge badge-success">Low Risk</span> (Additive UI features)</td>
+              </tr>
+              <tr>
+                <td><strong>Phase 4: Graph Sync Decoupling</strong></td>
+                <td>Week 4</td>
+                <td>Configure <code>load_kgx_to_neo4j.py</code> to ingest only <code>APPROVED</code> / <code>VALIDATED</code> triples.</td>
+                <td><span class="badge badge-primary">Medium Risk</span> (Verify node count parity)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      fontFamily: 'Plus Jakarta Sans, sans-serif'
+    });
+
+    // Theme Switcher
+    function toggleTheme() {
+      const body = document.body;
+      const current = body.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', next);
+      
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
+      if (next === 'light') {
+        icon.textContent = '🌙';
+        text.textContent = 'Dark Mode';
+      } else {
+        icon.textContent = '☀️';
+        text.textContent = 'Light Mode';
+      }
+      localStorage.setItem('realkg-briefing-theme', next);
+    }
+
+    // Scroll Progress & TOC Spy
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progressBar').style.width = scrolled + '%';
+
+      // TOC active link highlight
+      const sections = document.querySelectorAll('section');
+      const tocLinks = document.querySelectorAll('.toc-link');
+      let currentSectionId = '';
+      
+      sections.forEach(sec => {
+        const top = sec.offsetTop - 120;
+        if (winScroll >= top) {
+          currentSectionId = sec.getAttribute('id');
+        }
+      });
+
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSectionId) {
+          link.classList.add('active');
+        }
+      });
+    });
+
+    // Switch Path Tabs
+    function switchPath(pathNum) {
+      document.querySelectorAll('.path-tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === pathNum);
+      });
+      document.querySelectorAll('.path-pane').forEach((pane, idx) => {
+        pane.classList.toggle('active', idx + 1 === pathNum);
+      });
+    }
+
+    // In-The-Loop Simulation (6 Steps reflecting Hierarchical Loop)
+    let currentStep = 1;
+    const simSteps = [
+      {
+        step: 1,
+        title: "Step 1: Clinical Input Statement",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--text-faint); margin-bottom: 0.5rem;">INPUT STATEMENT • Source: DailyMed SPL • Section: BOXED WARNING</div>
+          <div style="font-size: 1.05rem; font-weight: 500; font-style: italic; background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: 6px; border-left: 3px solid var(--primary-light);">
+            "Patients receiving metformin must be monitored for fatal lactic acidosis."
+          </div>
+        `
+      },
+      {
+        step: 2,
+        title: "Step 2: Stage 1 (assertion-engine) & Inner Loop 1",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--primary-light); font-weight: 600; margin-bottom: 0.5rem;">[STAGE 1 PROPOSER + INNER LOOP 1: SYNTAX & QUOTE CHECK]</div>
+          <div style="background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem;">
+            {<br>
+            &nbsp;&nbsp;"subject": "Metformin",<br>
+            &nbsp;&nbsp;"predicate": "<span style="color: var(--danger);">treats</span>",<br>
+            &nbsp;&nbsp;"object": "lactic acidosis",<br>
+            &nbsp;&nbsp;"evidence": "Patients receiving metformin must be monitored for fatal lactic acidosis."<br>
+            }
+          </div>
+          <div style="font-size: 0.8rem; color: var(--success); margin-top: 0.5rem;">Inner Loop 1 Gate: <span class="badge badge-success">PASSED (Valid JSON + Exact Quote)</span></div>
+        `
+      },
+      {
+        step: 3,
+        title: "Step 3: Stage 2 (concept-align) & Inner Loop 2",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">[STAGE 2 GROUNDER + INNER LOOP 2: ONTOLOGICAL RESOLUTION]</div>
+          <div style="background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem;">
+            • Subject: "Metformin" &rarr; <span style="color: var(--accent);">RXNORM:6809</span> (TUI: T121, Category: biolink:Drug)<br>
+            • Object: "lactic acidosis" &rarr; <span style="color: var(--accent);">MEDDRA:10023727</span> (TUI: T047, Category: biolink:Disease)
+          </div>
+          <div style="font-size: 0.8rem; color: var(--success); margin-top: 0.5rem;">Inner Loop 2 Gate: <span class="badge badge-success">PASSED (Disambiguated to Tier-0 RxNorm & MedDRA)</span></div>
+        `
+      },
+      {
+        step: 4,
+        title: "Step 4: Stage 3 (quality-guardian) Axiom Evaluation",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--danger); font-weight: 700; margin-bottom: 0.5rem;">⚠️ STAGE 3 AXIOM VIOLATION DETECTED</div>
+          <div style="background: var(--danger-subtle); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.85rem 1rem; border-radius: 6px; font-size: 0.9rem;">
+            <strong>Rule:</strong> <code>SECTION_SEMANTIC_DISJOINTNESS</code><br>
+            <strong>Violation:</strong> Conditions mentioned in <em>BOXED WARNING</em> report toxicities and adverse risks. Predicate <code>biolink:treats</code> contradicts section semantics!
+          </div>
+        `
+      },
+      {
+        step: 5,
+        title: "Step 5: Outer Loop Recursion with Diagnostic Feedback",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--purple); font-weight: 700; margin-bottom: 0.5rem;">🔄 OUTER LOOP RECURSION (depth: 0 &rarr; 1)</div>
+          <div style="background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; border-left: 3px solid var(--purple);">
+            "Ontological Conflict: Lactic Acidosis in 'BOXED WARNING' is an adverse event risk, not an indication. You asserted 'treats'. Re-evaluate with predicate 'biolink:has_adverse_event' or 'contraindicated_in'."
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Status: Statement returned to Stage 1 with prior attempt + diagnostic.</div>
+        `
+      },
+      {
+        step: 6,
+        title: "Step 6: Stage 1 Turn 2 & Break to Next Statement",
+        content: `
+          <div style="font-size: 0.85rem; color: var(--success); font-weight: 700; margin-bottom: 0.5rem;">✅ SELF-CORRECTED & COMMITTED (BREAK 1 TRIGGERED)</div>
+          <div style="background: var(--bg-surface); padding: 0.85rem 1rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem;">
+            {<br>
+            &nbsp;&nbsp;"subject": "RXNORM:6809 (Metformin)",<br>
+            &nbsp;&nbsp;"predicate": "<span style="color: var(--success);">biolink:has_adverse_event</span>",<br>
+            &nbsp;&nbsp;"object": "MEDDRA:10023727 (Lactic Acidosis)",<br>
+            &nbsp;&nbsp;"lifecycle_status": "<span style="color: var(--accent);">SEMANTICALLY_VALID</span>"<br>
+            }
+          </div>
+          <div style="font-size: 0.8rem; color: var(--success); margin-top: 0.5rem;">Outer Loop Break: Saved to PostgreSQL &rarr; Moving to Next Statement!</div>
+        `
+      }
+    ];
+
+    function renderSimStep(idx) {
+      const stepData = simSteps[idx - 1];
+      document.getElementById('simStepTitle').textContent = stepData.title;
+      document.getElementById('simContent').innerHTML = stepData.content;
+      
+      for (let i = 1; i <= 6; i++) {
+        document.getElementById('dot' + i).classList.toggle('active', i === idx);
+      }
+      
+      const nextBtn = document.getElementById('simNextBtn');
+      if (idx === 6) {
+        nextBtn.textContent = 'Completed (Reset)';
+      } else {
+        nextBtn.textContent = 'Next Step →';
+      }
+    }
+
+    function nextSimStep() {
+      if (currentStep >= 6) {
+        currentStep = 1;
+      } else {
+        currentStep++;
+      }
+      renderSimStep(currentStep);
+    }
+
+    function resetSim() {
+      currentStep = 1;
+      renderSimStep(currentStep);
+    }
+
+    // HITL Button Action
+    function hitlAction(rowId, actionText) {
+      const row = document.getElementById('hitlRow' + rowId);
+      row.style.opacity = '0.5';
+      row.style.pointerEvents = 'none';
+      const lastCol = row.lastElementChild;
+      lastCol.innerHTML = `<span class="badge badge-success">${actionText}</span>`;
+    }
+
+    // Code Copy Helper
+    function copyCode(btn) {
+      const pre = btn.parentElement.nextElementSibling;
+      const code = pre.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => {
+          btn.innerText = originalText;
+        }, 2000);
+      });
+    }
+
+    // Initial render
+    renderSimStep(1);
+  </script>
+</body>
+</html>
